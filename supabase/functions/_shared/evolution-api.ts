@@ -4,11 +4,11 @@ export async function sendWhatsAppMessage(
 ): Promise<void> {
   const apiUrl = Deno.env.get("EVOLUTION_API_URL");
   const apiKey = Deno.env.get("EVOLUTION_API_KEY");
-  const instance = Deno.env.get("EVOLUTION_INSTANCE");
+  const instance = Deno.env.get("EVOLUTION_INSTANCE_NAME");
 
   if (!apiUrl || !apiKey || !instance) {
     throw new Error(
-      "Missing EVOLUTION_API_URL, EVOLUTION_API_KEY, or EVOLUTION_INSTANCE"
+      "Missing EVOLUTION_API_URL, EVOLUTION_API_KEY, or EVOLUTION_INSTANCE_NAME"
     );
   }
 

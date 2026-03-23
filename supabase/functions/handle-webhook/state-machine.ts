@@ -1,4 +1,5 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.39.0";
 import {
   ConversationRow,
   ConversationState,
@@ -6,7 +7,9 @@ import {
   StateTransitionResult,
 } from "../_shared/types.ts";
 
-function formatDateTime(isoString: string): string {
+// ── Helpers ──
+
+export function formatDateTime(isoString: string): string {
   const date = new Date(isoString);
   return date.toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -19,10 +22,13 @@ function formatDateTime(isoString: string): string {
   });
 }
 
-async function getBotConfig(
+export async function getBotConfig(
   supabase: SupabaseClient
 ): Promise<Record<string, string>> {
-  const { data } = await supabase.from("bot_config").select("key, value");
+  const { data, error } = await supabase.from("bot_config").select("key, value");
+  if (error) {
+    console.error("Error loading bot_config:", error);
+  }
   const config: Record<string, string> = {};
   if (data) {
     for (const row of data) {
@@ -32,108 +38,186 @@ async function getBotConfig(
   return config;
 }
 
-// --- State Handlers ---
+// ── Claude Haiku ──
+
+async function askClaudeHaiku(
+  systemPrompt: string,
+  userMessage: string
+): Promise<string> {
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!apiKey) {
+    console.error("ANTHROPIC_API_KEY not configured");
+    return "Desculpe, não consegui processar sua mensagem agora. Tente novamente mais tarde.";
+  }
+
+  try {
+    const client = new Anthropic({ apiKey });
+
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    });
+
+    const textBlock = response.content.find(
+      (block: { type: string }) => block.type === "text"
+    );
+    return (textBlock as { type: string; text: string })?.text ??
+      "Desculpe, não consegui gerar uma resposta.";
+  } catch (err) {
+    console.error("Claude Haiku error:", err);
+    return "Desculpe, estou com dificuldades técnicas. O Dr. Cláudio entrará em contato com você.";
+  }
+}
+
+// ── State Handlers ──
 
 function handleInicio(
   config: Record<string, string>,
   pushName?: string
 ): StateTransitionResult {
-  const greeting = pushName ? `Olá, ${pushName}!` : "Olá!";
+  const greeting = pushName ? `Olá, ${pushName}! ` : "Olá! ";
   const welcomeMsg =
     config["welcome_message"] ??
-    "Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋";
+    "Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋\n\nComo posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional";
 
   return {
-    reply: `${greeting} ${welcomeMsg}\n\nComo posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional`,
+    reply: `${greeting}${welcomeMsg}`,
     newState: "menu_principal",
     tempData: {},
   };
 }
 
-function handleMenuPrincipal(
+async function handleMenuPrincipal(
   text: string,
   conv: ConversationRow,
   config: Record<string, string>
-): StateTransitionResult {
+): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
-  if (normalized === "1" || normalized.includes("pessoal")) {
+  // Option 1: personal matter → pausado
+  if (normalized === "1") {
     const personalMsg =
       config["personal_message"] ??
-      "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente.";
+      "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente. Aguarde, por favor. 🙏";
 
     return {
-      reply: `${personalMsg}\n\nO Dr. Cláudio irá responder em breve. Aguarde, por favor. 🙏`,
+      reply: personalMsg,
       newState: "pausado",
       tempData: {},
     };
   }
 
-  if (normalized === "2" || normalized.includes("profissional")) {
+  // Option 2: professional matter → menu_profissional
+  if (normalized === "2") {
     const profMenu =
       config["professional_menu"] ??
-      "Menu Profissional:";
+      "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
 
     return {
-      reply: `${profMenu}\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio`,
+      reply: profMenu,
       newState: "menu_profissional",
       tempData: {},
     };
   }
 
-  return {
-    reply: "Desculpe, não entendi. Escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
-    newState: "menu_principal",
-    tempData: (conv.temp_data as TempData) ?? {},
-  };
-}
+  // Free text → Claude Haiku interprets intent and redirects
+  const servicesInfo = config["services_info"] ?? "";
+  const calendlyLink = config["calendly_link"] ?? "";
 
-function handleMenuProfissional(
-  text: string,
-  conv: ConversationRow,
-  config: Record<string, string>
-): StateTransitionResult {
-  const normalized = text.toLowerCase().trim();
+  const systemPrompt = `Você é o assistente virtual do Dr. Cláudio, fisioterapeuta.
+O paciente está no menu principal e deve escolher:
+1 - Assunto pessoal
+2 - Assunto profissional
 
-  if (normalized === "1" || normalized.includes("agendar")) {
+O paciente enviou uma mensagem livre em vez de digitar 1 ou 2.
+Analise a intenção e responda com EXATAMENTE uma destas ações no início da sua resposta:
+[ACAO:1] se o assunto parece pessoal
+[ACAO:2] se o assunto parece profissional
+[ACAO:MENU] se não conseguir determinar
+
+Depois da tag de ação, escreva uma mensagem curta e amigável ao paciente.
+Contexto dos serviços: ${servicesInfo}`;
+
+  const aiResponse = await askClaudeHaiku(systemPrompt, text);
+
+  if (aiResponse.includes("[ACAO:1]")) {
+    const personalMsg =
+      config["personal_message"] ??
+      "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente. Aguarde, por favor. 🙏";
+    const cleanReply = aiResponse.replace("[ACAO:1]", "").trim();
     return {
-      reply: "Ótimo! Vamos agendar sua consulta.\n\nPor favor, me informe seu nome completo:",
-      newState: "agendamento_nome",
+      reply: cleanReply || personalMsg,
+      newState: "pausado",
       tempData: {},
     };
   }
 
-  if (
-    normalized === "2" ||
-    normalized.includes("info") ||
-    normalized.includes("serviço") ||
-    normalized.includes("servico")
-  ) {
+  if (aiResponse.includes("[ACAO:2]")) {
+    const profMenu =
+      config["professional_menu"] ??
+      "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
+    const cleanReply = aiResponse.replace("[ACAO:2]", "").trim();
+    return {
+      reply: `${cleanReply}\n\n${profMenu}`,
+      newState: "menu_profissional",
+      tempData: {},
+    };
+  }
+
+  // Could not determine → re-show menu
+  return {
+    reply:
+      "Não consegui entender. Por favor, escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+    newState: "menu_principal",
+    tempData: {},
+  };
+}
+
+async function handleMenuProfissional(
+  text: string,
+  conv: ConversationRow,
+  config: Record<string, string>
+): Promise<StateTransitionResult> {
+  const normalized = text.toLowerCase().trim();
+
+  // Option 1: questions → duvidas with Claude Haiku
+  if (normalized === "1") {
     const servicesInfo =
       config["services_info"] ??
       "Oferecemos atendimento em fisioterapia ortopédica, esportiva e respiratória.";
+    const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
+
+    const systemPrompt = buildDuvidasPrompt(servicesInfo, calendlyLink);
+    const aiResponse = await askClaudeHaiku(
+      systemPrompt,
+      "O paciente quer saber sobre os serviços. Apresente um resumo amigável e pergunte em que pode ajudar."
+    );
 
     return {
-      reply: `${servicesInfo}\n\nDeseja algo mais?\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio`,
-      newState: "menu_profissional",
+      reply: `${aiResponse}\n\nDigite *0* ou *voltar* para retornar ao menu.`,
+      newState: "duvidas",
       tempData: {},
     };
   }
 
-  if (
-    normalized === "3" ||
-    normalized.includes("claudio") ||
-    normalized.includes("cláudio") ||
-    normalized.includes("falar")
-  ) {
+  // Option 2: schedule → send Calendly link
+  if (normalized === "2") {
+    const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
+    const schedulingMsg =
+      config["scheduling_message"] ??
+      `Para agendar sua consulta, clique no link abaixo e escolha o melhor horário:\n\n📅 ${calendlyLink}\n\nAssim que você agendar, te aviso aqui! 😊`;
+
     return {
-      reply: "Certo! O Dr. Cláudio irá responder sua mensagem em breve. Aguarde, por favor. 🙏",
-      newState: "pausado",
+      reply: schedulingMsg,
+      newState: "inicio",
       tempData: {},
     };
   }
 
-  if (normalized === "voltar" || normalized === "menu") {
+  // "voltar" or "0" → back to inicio
+  if (normalized === "voltar" || normalized === "0" || normalized === "menu") {
     return {
       reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
       newState: "menu_principal",
@@ -141,46 +225,26 @@ function handleMenuProfissional(
     };
   }
 
+  // Unrecognized → re-show menu
+  const profMenu =
+    config["professional_menu"] ??
+    "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
+
   return {
-    reply: "Desculpe, não entendi. Escolha uma opção:\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio\n\nOu envie \"voltar\" para o menu anterior.",
+    reply: `Não entendi. ${profMenu}\n\nDigite *0* para voltar ao menu principal.`,
     newState: "menu_profissional",
-    tempData: (conv.temp_data as TempData) ?? {},
+    tempData: {},
   };
 }
 
-function handleAgendamentoNome(
-  text: string
-): StateTransitionResult {
-  return {
-    reply: `Obrigado, ${text}! Qual o motivo da consulta?`,
-    newState: "agendamento_dia",
-    tempData: { patient_name: text },
-  };
-}
-
-async function handleAgendamentoDia(
+async function handleDuvidas(
   text: string,
-  conv: ConversationRow,
-  supabase: SupabaseClient,
   config: Record<string, string>
 ): Promise<StateTransitionResult> {
-  const tempData = (conv.temp_data as TempData) ?? {};
-  const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
-
-  return {
-    reply: `Entendi! Para agendar sua consulta de fisioterapia, acesse o link abaixo e escolha o melhor horário:\n\n📅 ${calendlyLink}\n\nAssim que você agendar, eu te aviso aqui! Se precisar voltar ao menu, envie "voltar".`,
-    newState: "agendamento_hora",
-    tempData: { ...tempData, reason: text },
-  };
-}
-
-function handleAgendamentoHora(
-  text: string,
-  conv: ConversationRow
-): StateTransitionResult {
   const normalized = text.toLowerCase().trim();
 
-  if (normalized === "voltar" || normalized === "menu") {
+  // Exit to menu
+  if (normalized === "0" || normalized === "voltar") {
     return {
       reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
       newState: "menu_principal",
@@ -188,33 +252,17 @@ function handleAgendamentoHora(
     };
   }
 
-  return {
-    reply: 'Estou aguardando sua marcação pelo link do Calendly. 📅\n\nSe já agendou, em breve você receberá a confirmação aqui. Se precisar voltar ao menu, envie "voltar".',
-    newState: "agendamento_hora",
-    tempData: (conv.temp_data as TempData) ?? {},
-  };
-}
-
-function handleDuvidas(
-  text: string,
-  config: Record<string, string>
-): StateTransitionResult {
-  const normalized = text.toLowerCase().trim();
-
-  if (normalized === "voltar" || normalized === "menu") {
-    return {
-      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
-      newState: "menu_principal",
-      tempData: {},
-    };
-  }
-
+  // Claude Haiku answers using services_info as context
   const servicesInfo =
     config["services_info"] ??
     "Oferecemos atendimento em fisioterapia ortopédica, esportiva e respiratória.";
+  const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
+
+  const systemPrompt = buildDuvidasPrompt(servicesInfo, calendlyLink);
+  const aiResponse = await askClaudeHaiku(systemPrompt, text);
 
   return {
-    reply: `${servicesInfo}\n\nEnvie "voltar" para o menu principal.`,
+    reply: `${aiResponse}\n\nDigite *0* ou *voltar* para retornar ao menu.`,
     newState: "duvidas",
     tempData: {},
   };
@@ -228,7 +276,21 @@ function handlePausado(): StateTransitionResult {
   };
 }
 
-// --- Main State Machine ---
+function buildDuvidasPrompt(servicesInfo: string, calendlyLink: string): string {
+  return `Você é o assistente virtual do Dr. Cláudio, fisioterapeuta.
+Responda de forma amigável, profissional e concisa (máximo 3 parágrafos curtos).
+Use emojis com moderação.
+
+Informações sobre os serviços:
+${servicesInfo}
+
+Para agendar consulta, o paciente deve acessar: ${calendlyLink}
+
+Se não souber responder algo específico, diga educadamente que o Dr. Cláudio entrará em contato para esclarecer.
+Nunca invente informações médicas. Não faça diagnósticos.`;
+}
+
+// ── Main State Machine ──
 
 export async function processMessage(
   conv: ConversationRow,
@@ -238,9 +300,6 @@ export async function processMessage(
 ): Promise<StateTransitionResult> {
   const state = conv.current_state as ConversationState;
   const config = await getBotConfig(supabase);
-
-  // Read takeover duration from config for human takeover states
-  const takeoverMinutes = parseInt(config["takeover_duration_minutes"] ?? "120", 10);
 
   switch (state) {
     case "inicio":
@@ -252,31 +311,20 @@ export async function processMessage(
     case "menu_profissional":
       return handleMenuProfissional(messageText, conv, config);
 
-    case "agendamento_nome":
-      return handleAgendamentoNome(messageText);
-
-    case "agendamento_dia":
-      return handleAgendamentoDia(messageText, conv, supabase, config);
-
-    case "agendamento_hora":
-      return handleAgendamentoHora(messageText, conv);
-
     case "duvidas":
       return handleDuvidas(messageText, config);
 
     case "pausado":
       return handlePausado();
 
+    // Legacy states from previous version — redirect to inicio
+    case "agendamento_nome":
+    case "agendamento_dia":
+    case "agendamento_hora":
+      return handleInicio(config, pushName);
+
     default:
       console.warn(`Unknown state "${state}" for conversation ${conv.id}`);
-      return {
-        reply: "Desculpe, algo deu errado. Vamos recomeçar.\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
-        newState: "menu_principal",
-        tempData: {},
-      };
+      return handleInicio(config, pushName);
   }
-}
-
-export function getTakeoverMinutes(config: Record<string, string>): number {
-  return parseInt(config["takeover_duration_minutes"] ?? "120", 10);
 }
