@@ -1,7 +1,12 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseClient } from "../_shared/supabase-client.ts";
 import { sendWhatsAppMessage } from "../_shared/evolution-api.ts";
-import { CalendlyWebhookPayload, TempData } from "../_shared/types.ts";
+import { CalendlyWebhookPayload } from "../_shared/types.ts";
+
+interface TempData {
+  patient_name?: string;
+  reason?: string;
+}
 
 function formatDateTime(isoString: string): string {
   const date = new Date(isoString);
@@ -136,15 +141,15 @@ Deno.serve(async (req) => {
       const { data: conversations } = await supabase
         .from("conversations")
         .select("*")
-        .eq("current_state", "scheduling");
+        .eq("current_state", "agendamento_hora");
 
       if (conversations && conversations.length > 0) {
         // Try to match by name in temp_data
         const match = conversations.find((c) => {
           const td = c.temp_data as TempData | null;
           return (
-            td?.name &&
-            td.name.toLowerCase().trim() === name.toLowerCase().trim()
+            td?.patient_name &&
+            td.patient_name.toLowerCase().trim() === name.toLowerCase().trim()
           );
         });
 
@@ -194,7 +199,7 @@ Deno.serve(async (req) => {
     const { error: convError } = await supabase
       .from("conversations")
       .update({
-        current_state: "menu",
+        current_state: "inicio",
         temp_data: null,
       })
       .eq("phone_number", phone);

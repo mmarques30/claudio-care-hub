@@ -1,7 +1,7 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseClient } from "../_shared/supabase-client.ts";
 import { sendWhatsAppMessage } from "../_shared/evolution-api.ts";
-import { EvolutionWebhookPayload, ConversationRow, TempData } from "../_shared/types.ts";
+import { EvolutionWebhookPayload, ConversationRow } from "../_shared/types.ts";
 import { processMessage } from "./state-machine.ts";
 
 Deno.serve(async (req) => {
@@ -36,11 +36,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Extract message text
+    // Extract message text and contact name
     const messageText =
       payload.data.message?.conversation ??
       payload.data.message?.extendedTextMessage?.text ??
       null;
+    const pushName = payload.data.pushName;
 
     const supabase = getSupabaseClient();
 
@@ -90,16 +91,31 @@ Deno.serve(async (req) => {
     }
 
     // Process through state machine
-    const result = await processMessage(conv, messageText.trim(), supabase);
+    const result = await processMessage(conv, messageText.trim(), supabase, pushName);
+
+    // Build update payload
+    const updatePayload: Record<string, unknown> = {
+      current_state: result.newState,
+      temp_data: result.tempData as Record<string, unknown>,
+      last_bot_message_at: new Date().toISOString(),
+    };
+
+    // Set takeover_until when entering pausado state
+    if (result.newState === "pausado") {
+      const { data: takeoverConfig } = await supabase
+        .from("bot_config")
+        .select("value")
+        .eq("key", "takeover_duration_minutes")
+        .single();
+      const minutes = parseInt(takeoverConfig?.value ?? "120", 10);
+      const takeoverUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+      updatePayload.takeover_until = takeoverUntil;
+    }
 
     // Update conversation state
     const { error: updateError } = await supabase
       .from("conversations")
-      .update({
-        current_state: result.newState,
-        temp_data: result.tempData as Record<string, unknown>,
-        last_bot_message_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", conv.id);
 
     if (updateError) {

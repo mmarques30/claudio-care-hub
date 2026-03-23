@@ -1,15 +1,15 @@
 export type ConversationState =
   | "inicio"
-  | "menu"
-  | "awaiting_name"
-  | "awaiting_reason"
-  | "scheduling"
-  | "confirming"
-  | "cancelling"
-  | "human_takeover";
+  | "menu_principal"
+  | "menu_profissional"
+  | "duvidas"
+  | "agendamento_nome"
+  | "agendamento_dia"
+  | "agendamento_hora"
+  | "pausado";
 
 export interface TempData {
-  name?: string;
+  patient_name?: string;
   reason?: string;
   appointment_id?: string;
 }
@@ -39,6 +39,7 @@ export interface EvolutionWebhookPayload {
       fromMe: boolean;
       id: string;
     };
+    pushName?: string;
     message?: {
       conversation?: string;
       extendedTextMessage?: {

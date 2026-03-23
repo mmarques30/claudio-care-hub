@@ -6,13 +6,6 @@ import {
   StateTransitionResult,
 } from "../_shared/types.ts";
 
-const MENU_TEXT = `Como posso te ajudar? Escolha uma opção:
-
-1️⃣ Agendar consulta
-2️⃣ Confirmar consulta
-3️⃣ Cancelar consulta
-4️⃣ Falar com o Dr. Cláudio`;
-
 function formatDateTime(isoString: string): string {
   const date = new Date(isoString);
   return date.toLocaleDateString("pt-BR", {
@@ -26,141 +19,162 @@ function formatDateTime(isoString: string): string {
   });
 }
 
-async function getCalendlyLink(supabase: SupabaseClient): Promise<string> {
-  const { data } = await supabase
-    .from("bot_config")
-    .select("value")
-    .eq("key", "calendly_link")
-    .single();
-
-  return data?.value ?? "https://calendly.com";
+async function getBotConfig(
+  supabase: SupabaseClient
+): Promise<Record<string, string>> {
+  const { data } = await supabase.from("bot_config").select("key, value");
+  const config: Record<string, string> = {};
+  if (data) {
+    for (const row of data) {
+      config[row.key] = row.value;
+    }
+  }
+  return config;
 }
 
 // --- State Handlers ---
 
-function handleInicio(): StateTransitionResult {
+function handleInicio(
+  config: Record<string, string>,
+  pushName?: string
+): StateTransitionResult {
+  const greeting = pushName ? `Olá, ${pushName}!` : "Olá!";
+  const welcomeMsg =
+    config["welcome_message"] ??
+    "Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋";
+
   return {
-    reply: `Olá! Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋\n\n${MENU_TEXT}`,
-    newState: "menu",
+    reply: `${greeting} ${welcomeMsg}\n\nComo posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional`,
+    newState: "menu_principal",
     tempData: {},
   };
 }
 
-function handleMenu(
+function handleMenuPrincipal(
   text: string,
   conv: ConversationRow,
-  supabase: SupabaseClient
-): Promise<StateTransitionResult> {
+  config: Record<string, string>
+): StateTransitionResult {
   const normalized = text.toLowerCase().trim();
 
-  if (normalized === "1" || normalized.includes("agendar")) {
-    return Promise.resolve({
-      reply: "Ótimo! Vamos agendar sua consulta.\n\nPor favor, me informe seu nome completo:",
-      newState: "awaiting_name",
-      tempData: {},
-    });
-  }
+  if (normalized === "1" || normalized.includes("pessoal")) {
+    const personalMsg =
+      config["personal_message"] ??
+      "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente.";
 
-  if (normalized === "2" || normalized.includes("confirmar")) {
-    return handleListAppointments(conv.phone_number, "confirming", supabase);
-  }
-
-  if (normalized === "3" || normalized.includes("cancelar")) {
-    return handleListAppointments(conv.phone_number, "cancelling", supabase);
-  }
-
-  if (
-    normalized === "4" ||
-    normalized.includes("claudio") ||
-    normalized.includes("cláudio") ||
-    normalized.includes("falar")
-  ) {
-    return Promise.resolve({
-      reply:
-        "Certo! O Dr. Cláudio irá responder sua mensagem em breve. Aguarde, por favor. 🙏",
-      newState: "human_takeover",
-      tempData: {},
-    });
-  }
-
-  return Promise.resolve({
-    reply: `Desculpe, não entendi sua resposta.\n\n${MENU_TEXT}`,
-    newState: "menu",
-    tempData: (conv.temp_data as TempData) ?? {},
-  });
-}
-
-async function handleListAppointments(
-  phone: string,
-  targetState: "confirming" | "cancelling",
-  supabase: SupabaseClient
-): Promise<StateTransitionResult> {
-  const statusFilter = targetState === "confirming" ? "pending" : "pending,confirmed";
-  const statuses = statusFilter.split(",");
-
-  const { data: appointments } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("patient_phone", phone)
-    .in("status", statuses)
-    .gte("scheduled_at", new Date().toISOString())
-    .order("scheduled_at", { ascending: true });
-
-  if (!appointments || appointments.length === 0) {
-    const actionLabel = targetState === "confirming" ? "confirmar" : "cancelar";
     return {
-      reply: `Você não tem consultas pendentes para ${actionLabel}.\n\n${MENU_TEXT}`,
-      newState: "menu",
+      reply: `${personalMsg}\n\nO Dr. Cláudio irá responder em breve. Aguarde, por favor. 🙏`,
+      newState: "pausado",
       tempData: {},
     };
   }
 
-  const list = appointments
-    .map(
-      (apt, i) =>
-        `${i + 1}️⃣ ${formatDateTime(apt.scheduled_at)} - Status: ${apt.status}`
-    )
-    .join("\n");
+  if (normalized === "2" || normalized.includes("profissional")) {
+    const profMenu =
+      config["professional_menu"] ??
+      "Menu Profissional:";
 
-  const actionLabel =
-    targetState === "confirming" ? "confirmar" : "cancelar";
+    return {
+      reply: `${profMenu}\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio`,
+      newState: "menu_profissional",
+      tempData: {},
+    };
+  }
 
   return {
-    reply: `Suas próximas consultas:\n\n${list}\n\nEnvie o número da consulta que deseja ${actionLabel}, ou "voltar" para o menu.`,
-    newState: targetState,
-    tempData: {
-      appointment_id: appointments.length === 1 ? appointments[0].id : undefined,
-    },
+    reply: "Desculpe, não entendi. Escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+    newState: "menu_principal",
+    tempData: (conv.temp_data as TempData) ?? {},
   };
 }
 
-function handleAwaitingName(
-  text: string,
-  conv: ConversationRow
-): StateTransitionResult {
-  return {
-    reply: `Obrigado, ${text}! Agora me conte: qual o motivo da consulta?`,
-    newState: "awaiting_reason",
-    tempData: { name: text },
-  };
-}
-
-async function handleAwaitingReason(
+function handleMenuProfissional(
   text: string,
   conv: ConversationRow,
-  supabase: SupabaseClient
+  config: Record<string, string>
+): StateTransitionResult {
+  const normalized = text.toLowerCase().trim();
+
+  if (normalized === "1" || normalized.includes("agendar")) {
+    return {
+      reply: "Ótimo! Vamos agendar sua consulta.\n\nPor favor, me informe seu nome completo:",
+      newState: "agendamento_nome",
+      tempData: {},
+    };
+  }
+
+  if (
+    normalized === "2" ||
+    normalized.includes("info") ||
+    normalized.includes("serviço") ||
+    normalized.includes("servico")
+  ) {
+    const servicesInfo =
+      config["services_info"] ??
+      "Oferecemos atendimento em fisioterapia ortopédica, esportiva e respiratória.";
+
+    return {
+      reply: `${servicesInfo}\n\nDeseja algo mais?\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio`,
+      newState: "menu_profissional",
+      tempData: {},
+    };
+  }
+
+  if (
+    normalized === "3" ||
+    normalized.includes("claudio") ||
+    normalized.includes("cláudio") ||
+    normalized.includes("falar")
+  ) {
+    return {
+      reply: "Certo! O Dr. Cláudio irá responder sua mensagem em breve. Aguarde, por favor. 🙏",
+      newState: "pausado",
+      tempData: {},
+    };
+  }
+
+  if (normalized === "voltar" || normalized === "menu") {
+    return {
+      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+      newState: "menu_principal",
+      tempData: {},
+    };
+  }
+
+  return {
+    reply: "Desculpe, não entendi. Escolha uma opção:\n\n1️⃣ Agendar consulta\n2️⃣ Informações sobre serviços\n3️⃣ Falar com o Dr. Cláudio\n\nOu envie \"voltar\" para o menu anterior.",
+    newState: "menu_profissional",
+    tempData: (conv.temp_data as TempData) ?? {},
+  };
+}
+
+function handleAgendamentoNome(
+  text: string
+): StateTransitionResult {
+  return {
+    reply: `Obrigado, ${text}! Qual o motivo da consulta?`,
+    newState: "agendamento_dia",
+    tempData: { patient_name: text },
+  };
+}
+
+async function handleAgendamentoDia(
+  text: string,
+  conv: ConversationRow,
+  supabase: SupabaseClient,
+  config: Record<string, string>
 ): Promise<StateTransitionResult> {
   const tempData = (conv.temp_data as TempData) ?? {};
-  const calendlyLink = await getCalendlyLink(supabase);
+  const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
 
   return {
     reply: `Entendi! Para agendar sua consulta de fisioterapia, acesse o link abaixo e escolha o melhor horário:\n\n📅 ${calendlyLink}\n\nAssim que você agendar, eu te aviso aqui! Se precisar voltar ao menu, envie "voltar".`,
-    newState: "scheduling",
+    newState: "agendamento_hora",
     tempData: { ...tempData, reason: text },
   };
 }
 
-function handleScheduling(
+function handleAgendamentoHora(
   text: string,
   conv: ConversationRow
 ): StateTransitionResult {
@@ -168,152 +182,48 @@ function handleScheduling(
 
   if (normalized === "voltar" || normalized === "menu") {
     return {
-      reply: `Sem problemas!\n\n${MENU_TEXT}`,
-      newState: "menu",
+      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+      newState: "menu_principal",
       tempData: {},
     };
   }
 
   return {
-    reply:
-      'Estou aguardando sua marcação pelo link do Calendly. 📅\n\nSe já agendou, em breve você receberá a confirmação aqui. Se precisar voltar ao menu, envie "voltar".',
-    newState: "scheduling",
+    reply: 'Estou aguardando sua marcação pelo link do Calendly. 📅\n\nSe já agendou, em breve você receberá a confirmação aqui. Se precisar voltar ao menu, envie "voltar".',
+    newState: "agendamento_hora",
     tempData: (conv.temp_data as TempData) ?? {},
   };
 }
 
-async function handleConfirming(
+function handleDuvidas(
   text: string,
-  conv: ConversationRow,
-  supabase: SupabaseClient
-): Promise<StateTransitionResult> {
+  config: Record<string, string>
+): StateTransitionResult {
   const normalized = text.toLowerCase().trim();
 
-  if (normalized === "voltar" || normalized === "nao" || normalized === "não") {
+  if (normalized === "voltar" || normalized === "menu") {
     return {
-      reply: `Ok!\n\n${MENU_TEXT}`,
-      newState: "menu",
+      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+      newState: "menu_principal",
       tempData: {},
     };
   }
 
-  // Try to parse appointment selection
-  const selection = parseInt(normalized, 10);
-  if (isNaN(selection)) {
-    return {
-      reply: 'Envie o número da consulta que deseja confirmar, ou "voltar" para o menu.',
-      newState: "confirming",
-      tempData: (conv.temp_data as TempData) ?? {},
-    };
-  }
-
-  // Fetch pending appointments to find the selected one
-  const { data: appointments } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("patient_phone", conv.phone_number)
-    .eq("status", "pending")
-    .gte("scheduled_at", new Date().toISOString())
-    .order("scheduled_at", { ascending: true });
-
-  if (!appointments || selection < 1 || selection > appointments.length) {
-    return {
-      reply: "Número inválido. Tente novamente ou envie \"voltar\".",
-      newState: "confirming",
-      tempData: (conv.temp_data as TempData) ?? {},
-    };
-  }
-
-  const appointment = appointments[selection - 1];
-
-  const { error } = await supabase
-    .from("appointments")
-    .update({ status: "confirmed" })
-    .eq("id", appointment.id);
-
-  if (error) {
-    console.error("Error confirming appointment:", error);
-    return {
-      reply: "Ocorreu um erro ao confirmar. Tente novamente mais tarde.",
-      newState: "menu",
-      tempData: {},
-    };
-  }
+  const servicesInfo =
+    config["services_info"] ??
+    "Oferecemos atendimento em fisioterapia ortopédica, esportiva e respiratória.";
 
   return {
-    reply: `✅ Consulta confirmada!\n\n📅 ${formatDateTime(appointment.scheduled_at)}\n\nNos vemos lá! Se precisar de algo mais:\n\n${MENU_TEXT}`,
-    newState: "menu",
+    reply: `${servicesInfo}\n\nEnvie "voltar" para o menu principal.`,
+    newState: "duvidas",
     tempData: {},
   };
 }
 
-async function handleCancelling(
-  text: string,
-  conv: ConversationRow,
-  supabase: SupabaseClient
-): Promise<StateTransitionResult> {
-  const normalized = text.toLowerCase().trim();
-
-  if (normalized === "voltar") {
-    return {
-      reply: `Ok!\n\n${MENU_TEXT}`,
-      newState: "menu",
-      tempData: {},
-    };
-  }
-
-  const selection = parseInt(normalized, 10);
-  if (isNaN(selection)) {
-    return {
-      reply: 'Envie o número da consulta que deseja cancelar, ou "voltar" para o menu.',
-      newState: "cancelling",
-      tempData: (conv.temp_data as TempData) ?? {},
-    };
-  }
-
-  const { data: appointments } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("patient_phone", conv.phone_number)
-    .in("status", ["pending", "confirmed"])
-    .gte("scheduled_at", new Date().toISOString())
-    .order("scheduled_at", { ascending: true });
-
-  if (!appointments || selection < 1 || selection > appointments.length) {
-    return {
-      reply: "Número inválido. Tente novamente ou envie \"voltar\".",
-      newState: "cancelling",
-      tempData: (conv.temp_data as TempData) ?? {},
-    };
-  }
-
-  const appointment = appointments[selection - 1];
-
-  const { error } = await supabase
-    .from("appointments")
-    .update({ status: "cancelled" })
-    .eq("id", appointment.id);
-
-  if (error) {
-    console.error("Error cancelling appointment:", error);
-    return {
-      reply: "Ocorreu um erro ao cancelar. Tente novamente mais tarde.",
-      newState: "menu",
-      tempData: {},
-    };
-  }
-
-  return {
-    reply: `❌ Consulta de ${formatDateTime(appointment.scheduled_at)} foi cancelada.\n\nSe quiser reagendar, é só me dizer!\n\n${MENU_TEXT}`,
-    newState: "menu",
-    tempData: {},
-  };
-}
-
-function handleHumanTakeover(): StateTransitionResult {
+function handlePausado(): StateTransitionResult {
   return {
     reply: "O Dr. Cláudio irá responder em breve. Aguarde, por favor. 🙏",
-    newState: "human_takeover",
+    newState: "pausado",
     tempData: {},
   };
 }
@@ -323,42 +233,50 @@ function handleHumanTakeover(): StateTransitionResult {
 export async function processMessage(
   conv: ConversationRow,
   messageText: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  pushName?: string
 ): Promise<StateTransitionResult> {
   const state = conv.current_state as ConversationState;
+  const config = await getBotConfig(supabase);
+
+  // Read takeover duration from config for human takeover states
+  const takeoverMinutes = parseInt(config["takeover_duration_minutes"] ?? "120", 10);
 
   switch (state) {
     case "inicio":
-      return handleInicio();
+      return handleInicio(config, pushName);
 
-    case "menu":
-      return handleMenu(messageText, conv, supabase);
+    case "menu_principal":
+      return handleMenuPrincipal(messageText, conv, config);
 
-    case "awaiting_name":
-      return handleAwaitingName(messageText, conv);
+    case "menu_profissional":
+      return handleMenuProfissional(messageText, conv, config);
 
-    case "awaiting_reason":
-      return handleAwaitingReason(messageText, conv, supabase);
+    case "agendamento_nome":
+      return handleAgendamentoNome(messageText);
 
-    case "scheduling":
-      return handleScheduling(messageText, conv);
+    case "agendamento_dia":
+      return handleAgendamentoDia(messageText, conv, supabase, config);
 
-    case "confirming":
-      return handleConfirming(messageText, conv, supabase);
+    case "agendamento_hora":
+      return handleAgendamentoHora(messageText, conv);
 
-    case "cancelling":
-      return handleCancelling(messageText, conv, supabase);
+    case "duvidas":
+      return handleDuvidas(messageText, config);
 
-    case "human_takeover":
-      return handleHumanTakeover();
+    case "pausado":
+      return handlePausado();
 
     default:
-      // Unknown state — reset to menu
       console.warn(`Unknown state "${state}" for conversation ${conv.id}`);
       return {
-        reply: `Desculpe, algo deu errado. Vamos recomeçar.\n\n${MENU_TEXT}`,
-        newState: "menu",
+        reply: "Desculpe, algo deu errado. Vamos recomeçar.\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+        newState: "menu_principal",
         tempData: {},
       };
   }
+}
+
+export function getTakeoverMinutes(config: Record<string, string>): number {
+  return parseInt(config["takeover_duration_minutes"] ?? "120", 10);
 }
