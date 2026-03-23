@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          calendar_event_id: string | null
+          created_at: string
+          id: string
+          patient_name: string | null
+          patient_phone: string
+          reason: string | null
+          reminder_sent: boolean
+          scheduled_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          created_at?: string
+          id?: string
+          patient_name?: string | null
+          patient_phone: string
+          reason?: string | null
+          reminder_sent?: boolean
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          calendar_event_id?: string | null
+          created_at?: string
+          id?: string
+          patient_name?: string | null
+          patient_phone?: string
+          reason?: string | null
+          reminder_sent?: boolean
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      available_slots: {
+        Row: {
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          slot_duration_minutes: number
+          slot_gap_minutes: number
+          start_time: string
+        }
+        Insert: {
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          slot_duration_minutes?: number
+          slot_gap_minutes?: number
+          start_time: string
+        }
+        Update: {
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          slot_duration_minutes?: number
+          slot_gap_minutes?: number
+          start_time?: string
+        }
+        Relationships: []
+      }
+      bot_config: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          current_state: string
+          id: string
+          last_bot_message_at: string | null
+          phone_number: string
+          takeover_until: string | null
+          temp_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_state?: string
+          id?: string
+          last_bot_message_at?: string | null
+          phone_number: string
+          takeover_until?: string | null
+          temp_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_state?: string
+          id?: string
+          last_bot_message_at?: string | null
+          phone_number?: string
+          takeover_until?: string | null
+          temp_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
