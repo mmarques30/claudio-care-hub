@@ -1,71 +1,30 @@
 
 
-# Ajustes do Sistema — n8n → Zapier + Evolution → Z-API + Mock Data
+# Adicionar tela "Automações" ao menu
 
-## 1. Edge Functions
+## O que será feito
 
-### `_shared/evolution-api.ts` → Rename/rewrite to Z-API
-Replace Evolution API integration with Z-API:
-- New function `sendWhatsAppMessage(phone, text)` using:
-  `POST https://api.z-api.io/instances/{ZAPI_INSTANCE_ID}/token/{ZAPI_TOKEN}/send-text`
-  Body: `{ "phone": phone, "message": text }`
-- Read `ZAPI_INSTANCE_ID` and `ZAPI_TOKEN` from env (secrets to be added)
-- Rename file to `z-api.ts` or keep same name, update imports
+Criar uma nova página **Automações** (`/automacoes`) com campos para configurar as chaves de integração (Z-API, Calendly, etc.), e adicionar o link no sidebar.
 
-### `handle-webhook/index.ts`
-- Remove `notifyN8n` function (lines 250-276) and both calls to it (confirm/cancel flows)
-- Update import from `evolution-api.ts` to new Z-API module
-- Confirm flow (reply "1"): just update status to `confirmed` + send WhatsApp
-- Cancel flow (reply "2"): just update status to `cancelled` + send WhatsApp with Calendly link
-- Keep `TAKEOVER_HOURS` or read from bot_config — either way, remove n8n references
+## Alterações
 
-### `handle-webhook/state-machine.ts`
-- Replace legacy cases `agendamento_nome`, `agendamento_dia`, `agendamento_hora` with single `agendamento` that redirects to `inicio`
+### 1. Nova página `src/pages/Automacoes.tsx`
+- Cards organizados por integração:
+  - **Z-API (WhatsApp)**: campos para `Instance ID` e `Token`, com botão salvar
+  - **Calendly**: campo para o link do Calendly (já existe em bot_config, mas fica visível aqui também)
+- Os valores serão salvos na tabela `bot_config` com chaves como `zapi_instance_id`, `zapi_token`
+- Status visual: indicador verde/vermelho se a chave está preenchida ou não
+- Aviso: "Configure as chaves abaixo para ativar as automações do chatbot"
 
-### `_shared/types.ts`
-- Update `ConversationState`: replace `agendamento_nome | agendamento_dia | agendamento_hora` with `agendamento`
+### 2. Sidebar (`AppSidebar.tsx`)
+- Adicionar item "Automações" com ícone `Zap` (lucide-react), rota `/automacoes`
+- Posicionar entre "Conversas" e "Configurações"
 
-### `handle-calendly-webhook/index.ts`
-- Remove `notifyN8n` function and both calls
-- Update import to Z-API module
-- Update conversation state search from legacy states to `["agendamento", "menu_profissional"]`
-- Remove `temp_data: null` from conversation updates
+### 3. Router (`App.tsx`)
+- Adicionar `<Route path="/automacoes" element={<Automacoes />} />`
 
-### `handle-confirmation/index.ts` — DELETE
-Redundant function, remove entirely.
-
-## 2. Secrets Required
-Two new secrets for Z-API:
-- `ZAPI_INSTANCE_ID`
-- `ZAPI_TOKEN`
-
-## 3. Frontend
-
-### `Configuracoes.tsx`
-- Remove `available_slots` query and "Horários de Atendimento" card
-- Add to `messageKeys`: `scheduling_message` ("Mensagem de Agendamento") and `calendly_link` ("Link do Calendly")
-
-### `Pacientes.tsx` + `Conversas.tsx`
-- Replace stateLabels: remove `agendamento_dia/hora/nome`, add `agendamento: "Agendamento"`
-
-### Mock Data — All 5 screens
-When real data is empty, show mock data with info banner "Dados de exemplo — serão substituídos por dados reais":
-
-- **Dashboard**: 4 mock appointments today (Maria Silva 09:00 confirmed, Joao Santos 10:00 pending, Ana Costa 14:00 cancelled, Pedro Lima 16:00 no_response) + counters + week list
-- **Agenda**: Same 4 mocks placed on today's date in the calendar
-- **Pacientes**: 4 mock patients with appointment history entries
-- **Conversas**: 3 mock conversations in states menu_principal, duvidas, pausado
-
-## Files Changed
-- `supabase/functions/_shared/evolution-api.ts` — rewrite to Z-API
-- `supabase/functions/_shared/types.ts` — simplify ConversationState
-- `supabase/functions/handle-webhook/index.ts` — remove n8n, update import
-- `supabase/functions/handle-webhook/state-machine.ts` — simplify states
-- `supabase/functions/handle-calendly-webhook/index.ts` — remove n8n, update import
-- `supabase/functions/handle-confirmation/index.ts` — delete
-- `src/pages/Configuracoes.tsx` — remove available_slots, add calendly fields
-- `src/pages/Pacientes.tsx` — stateLabels + mock data
-- `src/pages/Conversas.tsx` — stateLabels + mock data
-- `src/pages/Dashboard.tsx` — mock data
-- `src/pages/Agenda.tsx` — mock data
+## Arquivos alterados
+- `src/pages/Automacoes.tsx` — criar
+- `src/components/AppSidebar.tsx` — adicionar item no menu
+- `src/App.tsx` — adicionar rota
 
