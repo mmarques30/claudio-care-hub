@@ -8,12 +8,6 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Info } from "lucide-react";
 
-const integrationKeys = [
-  { key: "zapi_instance_id", label: "Instance ID" },
-  { key: "zapi_token", label: "Token" },
-  { key: "calendly_link", label: "Link do Calendly" },
-];
-
 export default function Automacoes() {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -35,7 +29,6 @@ export default function Automacoes() {
 
   const saveMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      // Try update first, if no rows affected then insert
       const { data, error } = await supabase
         .from("bot_config")
         .update({ value })
@@ -71,49 +64,10 @@ export default function Automacoes() {
       <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-4">
         <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
         <p className="text-sm text-muted-foreground">
-          Configure as chaves abaixo para ativar as automações do chatbot WhatsApp.
+          Configure as integrações abaixo para ativar as automações do chatbot WhatsApp.
+          As credenciais da Z-API são gerenciadas nos secrets do backend.
         </p>
       </div>
-
-      {/* Z-API */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Z-API (WhatsApp)</CardTitle>
-              <CardDescription>Conexão com o serviço de envio de mensagens WhatsApp</CardDescription>
-            </div>
-            <div className="flex items-center gap-1">
-              <StatusDot filled={isFilled("zapi_instance_id") && isFilled("zapi_token")} />
-              <span className="text-xs text-muted-foreground">
-                {isFilled("zapi_instance_id") && isFilled("zapi_token") ? "Configurado" : "Pendente"}
-              </span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {["zapi_instance_id", "zapi_token"].map((key) => (
-            <div key={key} className="space-y-2">
-              <Label>{key === "zapi_instance_id" ? "Instance ID" : "Token"}</Label>
-              <div className="flex gap-2">
-                <Input
-                  type={key === "zapi_token" ? "password" : "text"}
-                  value={values[key] || ""}
-                  onChange={(e) => setValues({ ...values, [key]: e.target.value })}
-                  placeholder={key === "zapi_instance_id" ? "Ex: 3FA..." : "Ex: abc123..."}
-                />
-                <Button
-                  size="sm"
-                  onClick={() => saveMutation.mutate({ key, value: values[key] || "" })}
-                  disabled={saveMutation.isPending}
-                >
-                  Salvar
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       {/* Calendly */}
       <Card>
