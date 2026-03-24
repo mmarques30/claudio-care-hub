@@ -92,6 +92,36 @@ export default function Dashboard() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">Distribuição por Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const statusCounts = [
+              { label: "Confirmadas", count: todayAppointments.filter(a => a.status === "confirmed").length, color: "bg-status-confirmed" },
+              { label: "Pendentes", count: todayAppointments.filter(a => a.status === "pending").length, color: "bg-status-pending" },
+              { label: "Canceladas", count: todayAppointments.filter(a => a.status === "cancelled").length, color: "bg-status-cancelled" },
+              { label: "Sem Resposta", count: todayAppointments.filter(a => a.status === "no_response").length, color: "bg-status-no-response" },
+            ];
+            const max = Math.max(...statusCounts.map(s => s.count), 1);
+            return (
+              <div className="space-y-3">
+                {statusCounts.map(s => (
+                  <div key={s.label} className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground w-28 shrink-0">{s.label}</span>
+                    <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+                      <div className={`${s.color} h-full rounded-full transition-all`} style={{ width: `${(s.count / max) * 100}%`, minWidth: s.count > 0 ? '1.5rem' : 0 }} />
+                    </div>
+                    <span className="text-sm font-medium w-6 text-right">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg">Consultas de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
