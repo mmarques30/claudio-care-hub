@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, Settings, Users, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Calendar, Settings, Users, MessageSquare, Zap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ const items = [
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Pacientes", url: "/pacientes", icon: Users },
   { title: "Conversas", url: "/conversas", icon: MessageSquare },
+  { title: "Automações", url: "/automacoes", icon: Zap },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
