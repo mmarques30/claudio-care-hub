@@ -1,30 +1,29 @@
 
 
-# Adicionar tela "Automações" ao menu
+# Ajustes Frontend + Limpeza de Edge Functions
 
-## O que será feito
+## Estado Atual
+A maioria das mudanças solicitadas **ja foi implementada** em iteracoes anteriores:
+- Z-API ja esta configurada em `_shared/evolution-api.ts`
+- States simplificados em `types.ts` e `state-machine.ts`
+- `Configuracoes.tsx` ja tem `scheduling_message` e `calendly_link`, sem available_slots
+- `Pacientes.tsx` e `Conversas.tsx` ja tem stateLabels corretos
+- Mock data ja existe em todas as 5 telas
+- `handle-webhook` ja esta limpo (sem n8n)
 
-Criar uma nova página **Automações** (`/automacoes`) com campos para configurar as chaves de integração (Z-API, Calendly, etc.), e adicionar o link no sidebar.
+## O que falta
 
-## Alterações
+### 1. Deletar `handle-calendly-webhook`
+Remover `supabase/functions/handle-calendly-webhook/index.ts` — o Zapier cuida disso agora.
 
-### 1. Nova página `src/pages/Automacoes.tsx`
-- Cards organizados por integração:
-  - **Z-API (WhatsApp)**: campos para `Instance ID` e `Token`, com botão salvar
-  - **Calendly**: campo para o link do Calendly (já existe em bot_config, mas fica visível aqui também)
-- Os valores serão salvos na tabela `bot_config` com chaves como `zapi_instance_id`, `zapi_token`
-- Status visual: indicador verde/vermelho se a chave está preenchida ou não
-- Aviso: "Configure as chaves abaixo para ativar as automações do chatbot"
+### 2. Dashboard — adicionar grafico simples por status
+Adicionar um card com grafico de barras simples (CSS puro, sem biblioteca) mostrando a distribuicao de consultas por status: confirmed (verde), pending (amarelo), cancelled (vermelho), no_response (cinza). Funciona com dados reais e mock.
 
-### 2. Sidebar (`AppSidebar.tsx`)
-- Adicionar item "Automações" com ícone `Zap` (lucide-react), rota `/automacoes`
-- Posicionar entre "Conversas" e "Configurações"
-
-### 3. Router (`App.tsx`)
-- Adicionar `<Route path="/automacoes" element={<Automacoes />} />`
+### 3. Limpar tipos legados em `_shared/types.ts`
+Remover `EvolutionWebhookPayload` e `CalendlyWebhookPayload` (nao sao mais usados). Manter apenas os tipos usados pelo `handle-webhook`.
 
 ## Arquivos alterados
-- `src/pages/Automacoes.tsx` — criar
-- `src/components/AppSidebar.tsx` — adicionar item no menu
-- `src/App.tsx` — adicionar rota
+- `supabase/functions/handle-calendly-webhook/index.ts` — deletar
+- `supabase/functions/_shared/types.ts` — remover tipos legados
+- `src/pages/Dashboard.tsx` — adicionar grafico de barras por status
 
