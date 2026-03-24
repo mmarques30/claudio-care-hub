@@ -216,11 +216,13 @@ async function handleInviteeCreated(
   }
 
   // Update conversation state back to inicio
+  const now = new Date().toISOString();
   await supabase
     .from("conversations")
     .update({
       current_state: "inicio",
-      last_bot_message_at: new Date().toISOString(),
+      last_bot_message_at: now,
+      updated_at: now,
     })
     .eq("phone_number", phone);
 
@@ -303,11 +305,13 @@ async function cancelAppointment(
     `Seu agendamento foi cancelado.\n\nSe quiser remarcar, acesse o link abaixo:\n\n📅 ${calendlyLink}`
   );
 
+  const now = new Date().toISOString();
   await supabase
     .from("conversations")
     .update({
       current_state: "inicio",
-      last_bot_message_at: new Date().toISOString(),
+      last_bot_message_at: now,
+      updated_at: now,
     })
     .eq("phone_number", phone);
 
