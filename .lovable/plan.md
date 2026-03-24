@@ -1,34 +1,26 @@
 
 
-# Autenticação + Limpeza Final do Frontend
+# Ajustes Frontend — Recuperação de Senha
 
-## O que já está pronto
-- Configurações: já tem `scheduling_message`, `calendly_link`, sem `available_slots`
-- Pacientes/Conversas: stateLabels já corretos (com `agendamento`, sem estados legados)
-- Dashboard: já tem gráfico de barras por status + mock data
-- Edge Functions legadas já deletadas (só resta `handle-webhook`)
-- Mock data em todas as telas
+## Estado Atual (ja correto)
+- **Conversas**: stateLabels ja tem `agendamento: "Agendamento"`, sem estados legados
+- **Automacoes**: ja tem apenas Calendly, sem Z-API credentials
+- **Configuracoes**: ja tem `scheduling_message` e `calendly_link`, sem available_slots
+- **types.ts**: auto-gerado — sera atualizado automaticamente quando o banco sincronizar (as colunas `patient_email` e `calendly_event_uri` ja existem no banco)
 
-## O que falta implementar
+## O que falta
 
-### 1. Autenticação com Supabase Auth
-- **`src/pages/Login.tsx`**: Tela de login com email/senha, logo "Consultório Dr. Cláudio", design limpo profissional. Usa `supabase.auth.signInWithPassword()`. Link opcional para registro.
-- **`src/pages/Register.tsx`**: Tela de registro com email/senha, `supabase.auth.signUp()`.
-- **`src/components/ProtectedRoute.tsx`**: Wrapper que verifica sessão via `onAuthStateChange` + `getSession`. Se não autenticado, redireciona para `/login`.
-- **`src/App.tsx`**: Envolver rotas existentes com `ProtectedRoute`. Adicionar rotas públicas `/login` e `/register`.
-- **Logout**: Adicionar botão de logout no header (`Layout.tsx`) que chama `supabase.auth.signOut()`.
+### 1. Link "Esqueci minha senha" no Login
+Adicionar link abaixo do botao de login que abre um modal/formulario para digitar o email e chamar `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })`.
 
-### 2. Automações — Remover Z-API credentials
-- **`src/pages/Automacoes.tsx`**: Remover campos de `zapi_instance_id` e `zapi_token` (gerenciados via Secrets do backend). Manter apenas o card do Calendly.
-
-### 3. types.ts — NÃO EDITAR
-O arquivo `types.ts` é auto-gerado. Os campos `patient_email` e `calendly_event_uri` precisam ser adicionados via migration no banco (a tabela já deveria tê-los). O types.ts será atualizado automaticamente.
+### 2. Pagina `/reset-password`
+- Verificar `type=recovery` no URL hash via `onAuthStateChange`
+- Formulario para nova senha + confirmacao
+- Chamar `supabase.auth.updateUser({ password })` ao submeter
+- Rota publica no App.tsx (fora do ProtectedRoute)
 
 ## Arquivos alterados
-- `src/pages/Login.tsx` — criar
-- `src/pages/Register.tsx` — criar
-- `src/components/ProtectedRoute.tsx` — criar
-- `src/App.tsx` — adicionar rotas de auth + proteção
-- `src/components/Layout.tsx` — botão logout no header
-- `src/pages/Automacoes.tsx` — remover campos Z-API
+- `src/pages/Login.tsx` — adicionar link "Esqueci minha senha" + logica de reset email
+- `src/pages/ResetPassword.tsx` — criar pagina de nova senha
+- `src/App.tsx` — adicionar rota publica `/reset-password`
 
