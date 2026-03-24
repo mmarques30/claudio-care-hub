@@ -114,7 +114,7 @@ export default function Login() {
                   {loading ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
-              <div className="text-center mt-4 space-y-2">
+              <div className="text-center mt-4">
                 <button
                   type="button"
                   onClick={() => setResetMode(true)}
@@ -122,6 +122,7 @@ export default function Login() {
                 >
                   Esqueci minha senha
                 </button>
+              </div>
                 <p className="text-sm text-muted-foreground">
                   Não tem conta?{" "}
                   <Link to="/register" className="text-primary hover:underline">
