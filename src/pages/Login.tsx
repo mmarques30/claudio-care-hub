@@ -123,13 +123,6 @@ export default function Login() {
                   Esqueci minha senha
                 </button>
               </div>
-                <p className="text-sm text-muted-foreground">
-                  Não tem conta?{" "}
-                  <Link to="/register" className="text-primary hover:underline">
-                    Criar conta
-                  </Link>
-                </p>
-              </div>
             </>
           )}
         </CardContent>
