@@ -3,9 +3,7 @@ export type ConversationState =
   | "menu_principal"
   | "menu_profissional"
   | "duvidas"
-  | "agendamento_nome"
-  | "agendamento_dia"
-  | "agendamento_hora"
+  | "agendamento"
   | "pausado";
 
 export interface TempData {

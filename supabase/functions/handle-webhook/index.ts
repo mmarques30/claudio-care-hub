@@ -4,8 +4,6 @@ import { sendWhatsAppMessage } from "../_shared/evolution-api.ts";
 import { EvolutionWebhookPayload, ConversationRow } from "../_shared/types.ts";
 import { processMessage, getBotConfig, formatDateTime } from "./state-machine.ts";
 
-const TAKEOVER_HOURS = 2;
-
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -13,15 +11,12 @@ Deno.serve(async (req) => {
   try {
     const payload: EvolutionWebhookPayload = await req.json();
 
-    // Only process message events
     if (payload.event !== "messages.upsert") {
       return jsonResponse({ ok: true, skipped: "not a message event" });
     }
 
-    // Extract phone number (strip @s.whatsapp.net)
     const rawJid = payload.data.key.remoteJid;
 
-    // Ignore group messages
     if (rawJid.includes("@g.us")) {
       return jsonResponse({ ok: true, skipped: "group message" });
     }
@@ -29,13 +24,16 @@ Deno.serve(async (req) => {
     const phone = rawJid.replace("@s.whatsapp.net", "");
     const supabase = getSupabaseClient();
 
-    // ── STEP 2: fromMe = true → Cláudio responded manually, activate takeover ──
+    // ── Read takeover duration from bot_config ──
+    const config = await getBotConfig(supabase);
+    const takeoverMinutes = parseInt(config["takeover_duration_minutes"] || "120");
+
+    // ── fromMe → activate takeover ──
     if (payload.data.key.fromMe) {
       const takeoverUntil = new Date(
-        Date.now() + TAKEOVER_HOURS * 60 * 60 * 1000
+        Date.now() + takeoverMinutes * 60 * 1000
       ).toISOString();
 
-      // Upsert: update if exists, create if not
       const { data: existing } = await supabase
         .from("conversations")
         .select("id")
@@ -76,7 +74,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, skipped: "non-text message" });
     }
 
-    // ── STEP 3: Lookup or create conversation ──
+    // ── Lookup or create conversation ──
     let { data: conversation } = await supabase
       .from("conversations")
       .select("*")
@@ -99,18 +97,16 @@ Deno.serve(async (req) => {
 
     const conv = conversation as ConversationRow;
 
-    // ── STEP 4: Check human takeover ──
+    // ── Check human takeover ──
     if (conv.takeover_until) {
       const takeoverEnd = new Date(conv.takeover_until);
       if (takeoverEnd > new Date()) {
-        console.log(
-          `Bot paused for ${phone} until ${conv.takeover_until}`
-        );
+        console.log(`Bot paused for ${phone} until ${conv.takeover_until}`);
         return jsonResponse({ ok: true, skipped: "bot_paused" });
       }
     }
 
-    // ── STEP 5: Check pending appointment awaiting confirmation ──
+    // ── Check pending appointment awaiting confirmation ──
     const { data: pendingAppointment } = await supabase
       .from("appointments")
       .select("*")
@@ -123,23 +119,13 @@ Deno.serve(async (req) => {
 
     if (pendingAppointment) {
       const trimmed = messageText.trim();
-      const config = await getBotConfig(supabase);
 
       if (trimmed === "1") {
-        // ── CONFIRM appointment ──
+        // ── CONFIRM appointment (Zapier handles Google Calendar) ──
         await supabase
           .from("appointments")
           .update({ status: "confirmed" })
           .eq("id", pendingAppointment.id);
-
-        // POST to n8n → change Google Calendar event to GREEN
-        await notifyN8n("N8N_CONFIRM_WEBHOOK", {
-          calendar_event_id: pendingAppointment.calendar_event_id,
-          patient_phone: phone,
-          patient_name: pendingAppointment.patient_name,
-          scheduled_at: pendingAppointment.scheduled_at,
-          colorId: "2",
-        });
 
         const dateStr = formatDateTime(pendingAppointment.scheduled_at);
         await sendWhatsAppMessage(
@@ -151,7 +137,6 @@ Deno.serve(async (req) => {
           .from("conversations")
           .update({
             current_state: "inicio",
-            temp_data: null,
             last_bot_message_at: new Date().toISOString(),
           })
           .eq("id", conv.id);
@@ -160,23 +145,13 @@ Deno.serve(async (req) => {
       }
 
       if (trimmed === "2") {
-        // ── RESCHEDULE (cancel + send Calendly link) ──
+        // ── CANCEL appointment (Zapier handles Google Calendar) ──
         await supabase
           .from("appointments")
           .update({ status: "cancelled" })
           .eq("id", pendingAppointment.id);
 
-        // POST to n8n → change Google Calendar event to RED
-        await notifyN8n("N8N_CANCEL_WEBHOOK", {
-          calendar_event_id: pendingAppointment.calendar_event_id,
-          patient_phone: phone,
-          patient_name: pendingAppointment.patient_name,
-          scheduled_at: pendingAppointment.scheduled_at,
-          colorId: "11",
-        });
-
-        const calendlyLink =
-          config["calendly_link"] ?? "https://calendly.com";
+        const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
         await sendWhatsAppMessage(
           phone,
           `Sem problemas! Clique aqui para escolher um novo horário:\n\n📅 ${calendlyLink}`
@@ -186,36 +161,29 @@ Deno.serve(async (req) => {
           .from("conversations")
           .update({
             current_state: "inicio",
-            temp_data: null,
             last_bot_message_at: new Date().toISOString(),
           })
           .eq("id", conv.id);
 
         return jsonResponse({ ok: true, action: "appointment_rescheduled" });
       }
-
-      // Message is neither '1' nor '2' — fall through to normal state machine
     }
 
-    // ── STEP 6: State machine ──
+    // ── State machine ──
     const result = await processMessage(conv, messageText.trim(), supabase, pushName);
 
-    // Build update payload
     const updatePayload: Record<string, unknown> = {
       current_state: result.newState,
-      temp_data: result.tempData as Record<string, unknown>,
       last_bot_message_at: new Date().toISOString(),
     };
 
-    // Set takeover_until when entering pausado
     if (result.newState === "pausado") {
       const takeoverUntil = new Date(
-        Date.now() + TAKEOVER_HOURS * 60 * 60 * 1000
+        Date.now() + takeoverMinutes * 60 * 1000
       ).toISOString();
       updatePayload.takeover_until = takeoverUntil;
     }
 
-    // ── STEP 8: Update conversation ──
     const { error: updateError } = await supabase
       .from("conversations")
       .update(updatePayload)
@@ -225,7 +193,6 @@ Deno.serve(async (req) => {
       console.error("Error updating conversation:", updateError);
     }
 
-    // ── STEP 7: Send reply via Evolution API ──
     if (result.reply) {
       await sendWhatsAppMessage(phone, result.reply);
     }
@@ -233,44 +200,13 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true });
   } catch (error) {
     console.error("Webhook handler error:", error);
-    // Always return 200 to avoid webhook retries
     return jsonResponse({ ok: false, error: "internal error" });
   }
 });
-
-// ── Helpers ──
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-async function notifyN8n(
-  envKey: string,
-  payload: Record<string, unknown>
-): Promise<void> {
-  const webhookUrl = Deno.env.get(envKey);
-  if (!webhookUrl) {
-    console.warn(`${envKey} not configured — skipping n8n notification`);
-    return;
-  }
-
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      console.error(`n8n webhook error (${envKey}): status=${response.status} body=${body}`);
-    } else {
-      console.log(`n8n notified (${envKey}) successfully`);
-    }
-  } catch (err) {
-    console.error(`Failed to call n8n webhook (${envKey}):`, err);
-  }
 }
