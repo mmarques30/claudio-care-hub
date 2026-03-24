@@ -1,37 +1,35 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseClient } from "../_shared/supabase-client.ts";
 import { sendWhatsAppMessage } from "../_shared/evolution-api.ts";
-import { EvolutionWebhookPayload, ConversationRow } from "../_shared/types.ts";
+import { ZApiWebhookPayload, ConversationRow } from "../_shared/types.ts";
 import { processMessage, getBotConfig, formatDateTime } from "./state-machine.ts";
+
+const TAKEOVER_HOURS = 2;
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
   try {
-    const payload: EvolutionWebhookPayload = await req.json();
+    const payload: ZApiWebhookPayload = await req.json();
+    const { phone, body, fromMe, isGroup } = payload;
 
-    if (payload.event !== "messages.upsert") {
-      return jsonResponse({ ok: true, skipped: "not a message event" });
+    // ── 1. Ignorar mensagens de grupo ──
+    if (isGroup) {
+      return jsonResponse({ ok: true, skipped: "group_message" });
     }
 
-    const rawJid = payload.data.key.remoteJid;
-
-    if (rawJid.includes("@g.us")) {
-      return jsonResponse({ ok: true, skipped: "group message" });
+    if (!phone) {
+      return jsonResponse({ ok: false, error: "missing phone" }, 400);
     }
 
-    const phone = rawJid.replace("@s.whatsapp.net", "");
     const supabase = getSupabaseClient();
-
-    // ── Read takeover duration from bot_config ──
     const config = await getBotConfig(supabase);
-    const takeoverMinutes = parseInt(config["takeover_duration_minutes"] || "120");
 
-    // ── fromMe → activate takeover ──
-    if (payload.data.key.fromMe) {
+    // ── 2. fromMe → Cláudio respondeu pelo celular → ativar takeover ──
+    if (fromMe) {
       const takeoverUntil = new Date(
-        Date.now() + takeoverMinutes * 60 * 1000
+        Date.now() + TAKEOVER_HOURS * 60 * 60 * 1000
       ).toISOString();
 
       const { data: existing } = await supabase
@@ -43,38 +41,24 @@ Deno.serve(async (req) => {
       if (existing) {
         await supabase
           .from("conversations")
-          .update({ takeover_until: takeoverUntil })
+          .update({
+            takeover_until: takeoverUntil,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", existing.id);
       } else {
-        await supabase
-          .from("conversations")
-          .insert({
-            phone_number: phone,
-            takeover_until: takeoverUntil,
-            current_state: "pausado",
-          });
+        await supabase.from("conversations").insert({
+          phone_number: phone,
+          current_state: "pausado",
+          takeover_until: takeoverUntil,
+        });
       }
 
       console.log(`Takeover activated for ${phone} until ${takeoverUntil}`);
       return jsonResponse({ ok: true, action: "takeover_activated" });
     }
 
-    // ── Extract message text and contact name ──
-    const messageText =
-      payload.data.message?.conversation ??
-      payload.data.message?.extendedTextMessage?.text ??
-      null;
-    const pushName = payload.data.pushName;
-
-    if (!messageText) {
-      await sendWhatsAppMessage(
-        phone,
-        "Desculpe, no momento só consigo processar mensagens de texto. Por favor, envie uma mensagem escrita. 😊"
-      );
-      return jsonResponse({ ok: true, skipped: "non-text message" });
-    }
-
-    // ── Lookup or create conversation ──
+    // ── 3. Buscar ou criar conversa pelo phone ──
     let { data: conversation } = await supabase
       .from("conversations")
       .select("*")
@@ -84,7 +68,7 @@ Deno.serve(async (req) => {
     if (!conversation) {
       const { data: newConv, error: insertError } = await supabase
         .from("conversations")
-        .insert({ phone_number: phone })
+        .insert({ phone_number: phone, current_state: "inicio" })
         .select()
         .single();
 
@@ -97,7 +81,7 @@ Deno.serve(async (req) => {
 
     const conv = conversation as ConversationRow;
 
-    // ── Check human takeover ──
+    // ── 4. Se takeover_until > now → bot pausado ──
     if (conv.takeover_until) {
       const takeoverEnd = new Date(conv.takeover_until);
       if (takeoverEnd > new Date()) {
@@ -106,7 +90,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Check pending appointment awaiting confirmation ──
+    const messageText = (body ?? "").trim();
+
+    // ── Mensagem não-texto (vazia) ──
+    if (!messageText) {
+      await sendWhatsAppMessage(
+        phone,
+        "Desculpe, no momento só consigo processar mensagens de texto. Por favor, envie uma mensagem escrita. 😊"
+      );
+      return jsonResponse({ ok: true, skipped: "non_text_message" });
+    }
+
+    // ── 5. Verificar appointment pendente com lembrete enviado ──
     const { data: pendingAppointment } = await supabase
       .from("appointments")
       .select("*")
@@ -118,10 +113,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (pendingAppointment) {
-      const trimmed = messageText.trim();
-
-      if (trimmed === "1") {
-        // ── CONFIRM appointment (Zapier handles Google Calendar) ──
+      if (messageText === "1") {
+        // Confirmar consulta
         await supabase
           .from("appointments")
           .update({ status: "confirmed" })
@@ -138,14 +131,15 @@ Deno.serve(async (req) => {
           .update({
             current_state: "inicio",
             last_bot_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq("id", conv.id);
 
         return jsonResponse({ ok: true, action: "appointment_confirmed" });
       }
 
-      if (trimmed === "2") {
-        // ── CANCEL appointment (Zapier handles Google Calendar) ──
+      if (messageText === "2") {
+        // Remarcar consulta
         await supabase
           .from("appointments")
           .update({ status: "cancelled" })
@@ -162,6 +156,7 @@ Deno.serve(async (req) => {
           .update({
             current_state: "inicio",
             last_bot_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq("id", conv.id);
 
@@ -169,19 +164,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── State machine ──
-    const result = await processMessage(conv, messageText.trim(), supabase, pushName);
+    // ── 6. State machine ──
+    const result = await processMessage(conv, messageText, supabase);
 
+    const now = new Date().toISOString();
     const updatePayload: Record<string, unknown> = {
       current_state: result.newState,
-      last_bot_message_at: new Date().toISOString(),
+      last_bot_message_at: now,
+      updated_at: now,
     };
 
+    // Se vai para pausado, ativar takeover
     if (result.newState === "pausado") {
-      const takeoverUntil = new Date(
-        Date.now() + takeoverMinutes * 60 * 1000
+      updatePayload.takeover_until = new Date(
+        Date.now() + TAKEOVER_HOURS * 60 * 60 * 1000
       ).toISOString();
-      updatePayload.takeover_until = takeoverUntil;
     }
 
     const { error: updateError } = await supabase
@@ -193,14 +190,15 @@ Deno.serve(async (req) => {
       console.error("Error updating conversation:", updateError);
     }
 
+    // ── 7. Enviar resposta via Z-API ──
     if (result.reply) {
       await sendWhatsAppMessage(phone, result.reply);
     }
 
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, state: result.newState });
   } catch (error) {
     console.error("Webhook handler error:", error);
-    return jsonResponse({ ok: false, error: "internal error" });
+    return jsonResponse({ ok: false, error: "internal_error" }, 500);
   }
 });
 

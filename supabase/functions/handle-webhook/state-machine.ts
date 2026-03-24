@@ -3,7 +3,6 @@ import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.39.0";
 import {
   ConversationRow,
   ConversationState,
-  TempData,
   StateTransitionResult,
 } from "../_shared/types.ts";
 
@@ -74,16 +73,14 @@ async function askClaudeHaiku(
 // ── State Handlers ──
 
 function handleInicio(
-  config: Record<string, string>,
-  pushName?: string
+  config: Record<string, string>
 ): StateTransitionResult {
-  const greeting = pushName ? `Olá, ${pushName}! ` : "Olá! ";
   const welcomeMsg =
     config["welcome_message"] ??
-    "Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋\n\nComo posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional";
+    "Olá! Bem-vindo(a) ao consultório do Dr. Cláudio - Fisioterapia. 👋\n\nComo posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional";
 
   return {
-    reply: `${greeting}${welcomeMsg}`,
+    reply: welcomeMsg,
     newState: "menu_principal",
     tempData: {},
   };
@@ -91,11 +88,11 @@ function handleInicio(
 
 async function handleMenuPrincipal(
   text: string,
-  conv: ConversationRow,
   config: Record<string, string>
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
+  // Opção 1 → Assunto pessoal → pausar bot
   if (normalized === "1") {
     const personalMsg =
       config["personal_message"] ??
@@ -103,6 +100,7 @@ async function handleMenuPrincipal(
     return { reply: personalMsg, newState: "pausado", tempData: {} };
   }
 
+  // Opção 2 → Menu profissional
   if (normalized === "2") {
     const profMenu =
       config["professional_menu"] ??
@@ -110,6 +108,7 @@ async function handleMenuPrincipal(
     return { reply: profMenu, newState: "menu_profissional", tempData: {} };
   }
 
+  // Mensagem livre → Claude Haiku interpreta e redireciona
   const servicesInfo = config["services_info"] ?? "";
 
   const systemPrompt = `Você é o assistente virtual do Dr. Cláudio, fisioterapeuta.
@@ -144,6 +143,7 @@ Contexto dos serviços: ${servicesInfo}`;
     return { reply: `${cleanReply}\n\n${profMenu}`, newState: "menu_profissional", tempData: {} };
   }
 
+  // Não conseguiu determinar → repetir menu
   return {
     reply: "Não consegui entender. Por favor, escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
     newState: "menu_principal",
@@ -153,11 +153,11 @@ Contexto dos serviços: ${servicesInfo}`;
 
 async function handleMenuProfissional(
   text: string,
-  conv: ConversationRow,
   config: Record<string, string>
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
+  // Opção 1 → Dúvidas com Claude Haiku + services_info
   if (normalized === "1") {
     const servicesInfo =
       config["services_info"] ??
@@ -177,6 +177,7 @@ async function handleMenuProfissional(
     };
   }
 
+  // Opção 2 → Agendar consulta via Calendly
   if (normalized === "2") {
     const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
     const schedulingMsg =
@@ -186,12 +187,9 @@ async function handleMenuProfissional(
     return { reply: schedulingMsg, newState: "inicio", tempData: {} };
   }
 
+  // Voltar ao menu principal
   if (normalized === "voltar" || normalized === "0" || normalized === "menu") {
-    return {
-      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
-      newState: "menu_principal",
-      tempData: {},
-    };
+    return handleInicio(config);
   }
 
   const profMenu =
@@ -211,12 +209,9 @@ async function handleDuvidas(
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
+  // Voltar → estado inicio (reinicia fluxo)
   if (normalized === "0" || normalized === "voltar") {
-    return {
-      reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
-      newState: "menu_principal",
-      tempData: {},
-    };
+    return handleInicio(config);
   }
 
   const servicesInfo =
@@ -234,7 +229,7 @@ async function handleDuvidas(
   };
 }
 
-function handlePausado(): StateTransitionResult {
+function handlePausado(config: Record<string, string>): StateTransitionResult {
   return {
     reply: "O Dr. Cláudio irá responder em breve. Aguarde, por favor. 🙏",
     newState: "pausado",
@@ -244,7 +239,7 @@ function handlePausado(): StateTransitionResult {
 
 function buildDuvidasPrompt(servicesInfo: string, calendlyLink: string): string {
   return `Você é o assistente virtual do Dr. Cláudio, fisioterapeuta.
-Responda de forma amigável, profissional e concisa (máximo 3 parágrafos curtos).
+Responda de forma amigável e profissional. Seja conciso (máximo 3 parágrafos curtos).
 Use emojis com moderação.
 
 Informações sobre os serviços:
@@ -261,33 +256,32 @@ Nunca invente informações médicas. Não faça diagnósticos.`;
 export async function processMessage(
   conv: ConversationRow,
   messageText: string,
-  supabase: SupabaseClient,
-  pushName?: string
+  supabase: SupabaseClient
 ): Promise<StateTransitionResult> {
   const state = conv.current_state as ConversationState;
   const config = await getBotConfig(supabase);
 
   switch (state) {
     case "inicio":
-      return handleInicio(config, pushName);
+      return handleInicio(config);
 
     case "menu_principal":
-      return handleMenuPrincipal(messageText, conv, config);
+      return handleMenuPrincipal(messageText, config);
 
     case "menu_profissional":
-      return handleMenuProfissional(messageText, conv, config);
+      return handleMenuProfissional(messageText, config);
 
     case "duvidas":
       return handleDuvidas(messageText, config);
 
     case "pausado":
-      return handlePausado();
+      return handlePausado(config);
 
     case "agendamento":
-      return handleInicio(config, pushName);
+      return handleInicio(config);
 
     default:
       console.warn(`Unknown state "${state}" for conversation ${conv.id}`);
-      return handleInicio(config, pushName);
+      return handleInicio(config);
   }
 }

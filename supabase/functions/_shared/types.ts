@@ -29,22 +29,12 @@ export interface ConversationRow {
   updated_at: string;
 }
 
-export interface EvolutionWebhookPayload {
-  event: string;
-  data: {
-    key: {
-      remoteJid: string;
-      fromMe: boolean;
-      id: string;
-    };
-    pushName?: string;
-    message?: {
-      conversation?: string;
-      extendedTextMessage?: {
-        text?: string;
-      };
-    };
-  };
+// Z-API webhook payload format
+export interface ZApiWebhookPayload {
+  phone: string;
+  body: string;
+  fromMe: boolean;
+  isGroup: boolean;
 }
 
 export interface CalendlyWebhookPayload {
