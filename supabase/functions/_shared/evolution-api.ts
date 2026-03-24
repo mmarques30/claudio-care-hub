@@ -2,35 +2,29 @@ export async function sendWhatsAppMessage(
   phone: string,
   text: string
 ): Promise<void> {
-  const apiUrl = Deno.env.get("EVOLUTION_API_URL");
-  const apiKey = Deno.env.get("EVOLUTION_API_KEY");
-  const instance = Deno.env.get("EVOLUTION_INSTANCE_NAME");
+  const instanceId = Deno.env.get("ZAPI_INSTANCE_ID");
+  const token = Deno.env.get("ZAPI_TOKEN");
 
-  if (!apiUrl || !apiKey || !instance) {
-    throw new Error(
-      "Missing EVOLUTION_API_URL, EVOLUTION_API_KEY, or EVOLUTION_INSTANCE_NAME"
-    );
+  if (!instanceId || !token) {
+    throw new Error("Missing ZAPI_INSTANCE_ID or ZAPI_TOKEN");
   }
 
-  const url = `${apiUrl}/message/sendText/${instance}`;
+  const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: apiKey,
     },
     body: JSON.stringify({
-      number: phone,
-      text: text,
+      phone: phone,
+      message: text,
     }),
   });
 
   if (!response.ok) {
     const body = await response.text();
-    console.error(
-      `Evolution API error: status=${response.status} body=${body}`
-    );
+    console.error(`Z-API error: status=${response.status} body=${body}`);
     throw new Error(`Failed to send WhatsApp message: ${response.status}`);
   }
 }

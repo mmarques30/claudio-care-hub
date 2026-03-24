@@ -39,7 +39,6 @@ async function verifyCalendlySignature(
   const v1 = parts["v1"];
   if (!timestamp || !v1) return false;
 
-  // Reject signatures older than 3 minutes to prevent replay attacks
   const tolerance = 3 * 60 * 1000;
   const signatureAge = Date.now() - parseInt(timestamp, 10) * 1000;
   if (signatureAge > tolerance) {
@@ -96,34 +95,6 @@ function extractPhoneFromCalendly(
   return null;
 }
 
-async function notifyN8n(
-  envKey: string,
-  payload: Record<string, unknown>
-): Promise<void> {
-  const webhookUrl = Deno.env.get(envKey);
-  if (!webhookUrl) {
-    console.warn(`${envKey} not configured — skipping n8n notification`);
-    return;
-  }
-
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      console.error(`n8n webhook error (${envKey}): status=${response.status} body=${body}`);
-    } else {
-      console.log(`n8n notified (${envKey}) successfully`);
-    }
-  } catch (err) {
-    console.error(`Failed to call n8n webhook (${envKey}):`, err);
-  }
-}
-
 async function getBotConfig(
   supabase: ReturnType<typeof getSupabaseClient>
 ): Promise<Record<string, string>> {
@@ -146,7 +117,6 @@ Deno.serve(async (req) => {
   try {
     const bodyText = await req.text();
 
-    // Verify Calendly signature
     const isValid = await verifyCalendlySignature(req, bodyText);
     if (!isValid) {
       console.error("Invalid Calendly webhook signature");
@@ -156,17 +126,14 @@ Deno.serve(async (req) => {
     const data: CalendlyWebhookPayload = JSON.parse(bodyText);
     const supabase = getSupabaseClient();
 
-    // ── INVITEE CREATED (new appointment) ──
     if (data.event === "invitee.created") {
       return await handleInviteeCreated(data, supabase);
     }
 
-    // ── INVITEE CANCELED ──
     if (data.event === "invitee.canceled") {
       return await handleInviteeCanceled(data, supabase);
     }
 
-    // Unknown event — acknowledge
     return jsonResponse({ ok: true, skipped: `unhandled event: ${data.event}` });
   } catch (error) {
     console.error("Calendly webhook error:", error);
@@ -184,17 +151,15 @@ async function handleInviteeCreated(
   const scheduledAt = scheduled_event.start_time;
   const eventUri = scheduled_event.uri;
 
-  // Extract phone from Calendly Q&A or UTM
   let phone = extractPhoneFromCalendly(data.payload);
 
-  // Fallback: search conversations in scheduling-related states
   if (!phone) {
     console.log(`No phone in Calendly payload for ${name}. Searching conversations...`);
 
     const { data: conversations } = await supabase
       .from("conversations")
       .select("phone_number, temp_data")
-      .in("current_state", ["agendamento_hora", "agendamento_dia", "agendamento_nome", "menu_profissional"]);
+      .in("current_state", ["agendamento", "menu_profissional"]);
 
     if (conversations && conversations.length > 0) {
       const match = conversations.find((c) => {
@@ -220,7 +185,6 @@ async function handleInviteeCreated(
     return jsonResponse({ ok: false, error: "Could not determine phone number" });
   }
 
-  // Extract reason from Q&A if available
   let reason: string | null = null;
   if (data.payload.questions_and_answers) {
     for (const qa of data.payload.questions_and_answers) {
@@ -232,7 +196,7 @@ async function handleInviteeCreated(
     }
   }
 
-  // Save appointment to DB
+  // Save appointment (Zapier detects new row and creates Google Calendar event)
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
@@ -251,23 +215,11 @@ async function handleInviteeCreated(
     throw appointmentError;
   }
 
-  // POST to n8n → create Google Calendar event
-  await notifyN8n("N8N_NEW_APPOINTMENT_WEBHOOK", {
-    appointment_id: appointment.id,
-    patient_phone: phone,
-    patient_name: name,
-    patient_email: email,
-    reason,
-    scheduled_at: scheduledAt,
-    calendly_event_uri: eventUri,
-  });
-
   // Update conversation state back to inicio
   await supabase
     .from("conversations")
     .update({
       current_state: "inicio",
-      temp_data: null,
       last_bot_message_at: new Date().toISOString(),
     })
     .eq("phone_number", phone);
@@ -289,10 +241,9 @@ async function handleInviteeCanceled(
   data: CalendlyWebhookPayload,
   supabase: ReturnType<typeof getSupabaseClient>
 ): Promise<Response> {
-  const { name, email, scheduled_event } = data.payload;
+  const { name, scheduled_event } = data.payload;
   const eventUri = scheduled_event.uri;
 
-  // Find appointment by calendar_event_id
   const { data: appointment, error: fetchError } = await supabase
     .from("appointments")
     .select("*")
@@ -303,7 +254,6 @@ async function handleInviteeCanceled(
     .single();
 
   if (fetchError || !appointment) {
-    // Try finding by name + scheduled_at as fallback
     const phone = extractPhoneFromCalendly(data.payload);
     if (phone) {
       const { data: fallback } = await supabase
@@ -334,7 +284,7 @@ async function cancelAppointment(
   const phone = appointment.patient_phone as string;
   const appointmentId = appointment.id as string;
 
-  // Update status to cancelled
+  // Update status (Zapier detects change and updates Google Calendar)
   const { error: updateError } = await supabase
     .from("appointments")
     .update({ status: "cancelled" })
@@ -345,32 +295,18 @@ async function cancelAppointment(
     throw updateError;
   }
 
-  // POST to n8n → update Google Calendar (red)
-  await notifyN8n("N8N_CANCEL_WEBHOOK", {
-    appointment_id: appointmentId,
-    calendar_event_id: appointment.calendar_event_id,
-    patient_phone: phone,
-    patient_name: appointment.patient_name,
-    scheduled_at: appointment.scheduled_at,
-    colorId: "11",
-  });
-
-  // Get calendly_link from bot_config
   const config = await getBotConfig(supabase);
   const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
 
-  // Send WhatsApp notification
   await sendWhatsAppMessage(
     phone,
     `Seu agendamento foi cancelado.\n\nSe quiser remarcar, acesse o link abaixo:\n\n📅 ${calendlyLink}`
   );
 
-  // Reset conversation state
   await supabase
     .from("conversations")
     .update({
       current_state: "inicio",
-      temp_data: null,
       last_bot_message_at: new Date().toISOString(),
     })
     .eq("phone_number", phone);
@@ -378,8 +314,6 @@ async function cancelAppointment(
   console.log(`Appointment ${appointmentId} cancelled for ${phone}`);
   return jsonResponse({ ok: true, action: "appointment_cancelled", appointment_id: appointmentId });
 }
-
-// ── Helpers ──
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {

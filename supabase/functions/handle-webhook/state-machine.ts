@@ -96,35 +96,21 @@ async function handleMenuPrincipal(
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
-  // Option 1: personal matter → pausado
   if (normalized === "1") {
     const personalMsg =
       config["personal_message"] ??
       "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente. Aguarde, por favor. 🙏";
-
-    return {
-      reply: personalMsg,
-      newState: "pausado",
-      tempData: {},
-    };
+    return { reply: personalMsg, newState: "pausado", tempData: {} };
   }
 
-  // Option 2: professional matter → menu_profissional
   if (normalized === "2") {
     const profMenu =
       config["professional_menu"] ??
       "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
-
-    return {
-      reply: profMenu,
-      newState: "menu_profissional",
-      tempData: {},
-    };
+    return { reply: profMenu, newState: "menu_profissional", tempData: {} };
   }
 
-  // Free text → Claude Haiku interprets intent and redirects
   const servicesInfo = config["services_info"] ?? "";
-  const calendlyLink = config["calendly_link"] ?? "";
 
   const systemPrompt = `Você é o assistente virtual do Dr. Cláudio, fisioterapeuta.
 O paciente está no menu principal e deve escolher:
@@ -147,11 +133,7 @@ Contexto dos serviços: ${servicesInfo}`;
       config["personal_message"] ??
       "Para assuntos pessoais, o Dr. Cláudio irá responder pessoalmente. Aguarde, por favor. 🙏";
     const cleanReply = aiResponse.replace("[ACAO:1]", "").trim();
-    return {
-      reply: cleanReply || personalMsg,
-      newState: "pausado",
-      tempData: {},
-    };
+    return { reply: cleanReply || personalMsg, newState: "pausado", tempData: {} };
   }
 
   if (aiResponse.includes("[ACAO:2]")) {
@@ -159,17 +141,11 @@ Contexto dos serviços: ${servicesInfo}`;
       config["professional_menu"] ??
       "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
     const cleanReply = aiResponse.replace("[ACAO:2]", "").trim();
-    return {
-      reply: `${cleanReply}\n\n${profMenu}`,
-      newState: "menu_profissional",
-      tempData: {},
-    };
+    return { reply: `${cleanReply}\n\n${profMenu}`, newState: "menu_profissional", tempData: {} };
   }
 
-  // Could not determine → re-show menu
   return {
-    reply:
-      "Não consegui entender. Por favor, escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
+    reply: "Não consegui entender. Por favor, escolha uma opção:\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
     newState: "menu_principal",
     tempData: {},
   };
@@ -182,7 +158,6 @@ async function handleMenuProfissional(
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
-  // Option 1: questions → duvidas with Claude Haiku
   if (normalized === "1") {
     const servicesInfo =
       config["services_info"] ??
@@ -202,21 +177,15 @@ async function handleMenuProfissional(
     };
   }
 
-  // Option 2: schedule → send Calendly link
   if (normalized === "2") {
     const calendlyLink = config["calendly_link"] ?? "https://calendly.com";
     const schedulingMsg =
       config["scheduling_message"] ??
       `Para agendar sua consulta, clique no link abaixo e escolha o melhor horário:\n\n📅 ${calendlyLink}\n\nAssim que você agendar, te aviso aqui! 😊`;
 
-    return {
-      reply: schedulingMsg,
-      newState: "inicio",
-      tempData: {},
-    };
+    return { reply: schedulingMsg, newState: "inicio", tempData: {} };
   }
 
-  // "voltar" or "0" → back to inicio
   if (normalized === "voltar" || normalized === "0" || normalized === "menu") {
     return {
       reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
@@ -225,7 +194,6 @@ async function handleMenuProfissional(
     };
   }
 
-  // Unrecognized → re-show menu
   const profMenu =
     config["professional_menu"] ??
     "Menu Profissional:\n\n1️⃣ Dúvidas sobre serviços\n2️⃣ Agendar consulta";
@@ -243,7 +211,6 @@ async function handleDuvidas(
 ): Promise<StateTransitionResult> {
   const normalized = text.toLowerCase().trim();
 
-  // Exit to menu
   if (normalized === "0" || normalized === "voltar") {
     return {
       reply: "Como posso te ajudar?\n\n1️⃣ Assunto pessoal\n2️⃣ Assunto profissional",
@@ -252,7 +219,6 @@ async function handleDuvidas(
     };
   }
 
-  // Claude Haiku answers using services_info as context
   const servicesInfo =
     config["services_info"] ??
     "Oferecemos atendimento em fisioterapia ortopédica, esportiva e respiratória.";
@@ -317,10 +283,7 @@ export async function processMessage(
     case "pausado":
       return handlePausado();
 
-    // Legacy states from previous version — redirect to inicio
-    case "agendamento_nome":
-    case "agendamento_dia":
-    case "agendamento_hora":
+    case "agendamento":
       return handleInicio(config, pushName);
 
     default:
