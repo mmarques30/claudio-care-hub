@@ -17,8 +17,10 @@ export type Database = {
       appointments: {
         Row: {
           calendar_event_id: string | null
+          calendly_event_uri: string | null
           created_at: string
           id: string
+          patient_email: string | null
           patient_name: string | null
           patient_phone: string
           reason: string | null
@@ -29,8 +31,10 @@ export type Database = {
         }
         Insert: {
           calendar_event_id?: string | null
+          calendly_event_uri?: string | null
           created_at?: string
           id?: string
+          patient_email?: string | null
           patient_name?: string | null
           patient_phone: string
           reason?: string | null
@@ -41,8 +45,10 @@ export type Database = {
         }
         Update: {
           calendar_event_id?: string | null
+          calendly_event_uri?: string | null
           created_at?: string
           id?: string
+          patient_email?: string | null
           patient_name?: string | null
           patient_phone?: string
           reason?: string | null
@@ -110,6 +116,7 @@ export type Database = {
           current_state: string
           id: string
           last_bot_message_at: string | null
+          pending_reason: string | null
           phone_number: string
           takeover_until: string | null
           temp_data: Json | null
@@ -120,6 +127,7 @@ export type Database = {
           current_state?: string
           id?: string
           last_bot_message_at?: string | null
+          pending_reason?: string | null
           phone_number: string
           takeover_until?: string | null
           temp_data?: Json | null
@@ -130,6 +138,7 @@ export type Database = {
           current_state?: string
           id?: string
           last_bot_message_at?: string | null
+          pending_reason?: string | null
           phone_number?: string
           takeover_until?: string | null
           temp_data?: Json | null

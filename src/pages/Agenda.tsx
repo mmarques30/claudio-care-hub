@@ -1,35 +1,28 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, startOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
-function getMockAppointments() {
-  const today = new Date();
-  const base = startOfDay(today);
-  return [
-    { id: "mock-1", patient_name: "Maria Silva", patient_phone: "5511999990001", reason: "Dor lombar", scheduled_at: new Date(base.getTime() + 9 * 3600000).toISOString(), status: "confirmed", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-2", patient_name: "João Santos", patient_phone: "5511999990002", reason: "Reabilitação joelho", scheduled_at: new Date(base.getTime() + 10 * 3600000).toISOString(), status: "pending", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-3", patient_name: "Ana Costa", patient_phone: "5511999990003", reason: "Fisioterapia respiratória", scheduled_at: new Date(base.getTime() + 14 * 3600000).toISOString(), status: "cancelled", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-4", patient_name: "Pedro Lima", patient_phone: "5511999990004", reason: "Avaliação postural", scheduled_at: new Date(base.getTime() + 16 * 3600000).toISOString(), status: "no_response", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-  ];
-}
-
 export default function Agenda() {
+  const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selected, setSelected] = useState<Tables<"appointments"> | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const start = startOfMonth(currentMonth);
   const end = endOfMonth(currentMonth);
 
-  const { data: rawAppointments = [] } = useQuery({
+  const { data: appointments = [] } = useQuery({
     queryKey: ["appointments-month", format(currentMonth, "yyyy-MM")],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,8 +36,23 @@ export default function Agenda() {
     },
   });
 
-  const isMock = rawAppointments.length === 0;
-  const appointments = isMock ? getMockAppointments() : rawAppointments;
+  useEffect(() => {
+    const channel = supabase
+      .channel("agenda-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["appointments-month"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const filtered = appointments.filter((a) => {
+    const matchesSearch = !search || 
+      (a.patient_name?.toLowerCase().includes(search.toLowerCase())) ||
+      a.patient_phone.includes(search);
+    const matchesStatus = statusFilter === "all" || a.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const days = eachDayOfInterval({ start, end });
   const startPad = getDay(start);
@@ -73,12 +81,24 @@ export default function Agenda() {
         </div>
       </div>
 
-      {isMock && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>Dados de exemplo — serão substituídos por dados reais.</AlertDescription>
-        </Alert>
-      )}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="confirmed">Confirmado</SelectItem>
+            <SelectItem value="pending">Pendente</SelectItem>
+            <SelectItem value="cancelled">Cancelado</SelectItem>
+            <SelectItem value="no_response">Sem Resposta</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <Card>
         <CardContent className="p-2 md:p-4">
@@ -90,18 +110,15 @@ export default function Agenda() {
               <div key={`pad-${i}`} />
             ))}
             {days.map((day) => {
-              const dayAppts = appointments.filter((a) => isSameDay(new Date(a.scheduled_at), day));
+              const dayAppts = filtered.filter((a) => isSameDay(new Date(a.scheduled_at), day));
               return (
-                <div
-                  key={day.toISOString()}
-                  className="min-h-[60px] md:min-h-[80px] border rounded-md p-1 text-xs"
-                >
+                <div key={day.toISOString()} className="min-h-[60px] md:min-h-[80px] border rounded-md p-1 text-xs">
                   <div className="font-medium text-muted-foreground mb-1">{format(day, "d")}</div>
                   <div className="space-y-0.5">
                     {dayAppts.slice(0, 3).map((a) => (
                       <button
                         key={a.id}
-                        onClick={() => setSelected(a as Tables<"appointments">)}
+                        onClick={() => setSelected(a)}
                         className={`w-full text-left truncate text-[10px] md:text-xs px-1 py-0.5 rounded text-white ${statusColor[a.status] || statusColor.pending}`}
                       >
                         {format(new Date(a.scheduled_at), "HH:mm")} {a.patient_name || ""}

@@ -23,7 +23,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <header className="h-14 flex items-center justify-between border-b bg-card px-4 shrink-0">
             <div className="flex items-center">
               <SidebarTrigger className="mr-4" />
-              <h1 className="text-lg font-semibold text-foreground">Painel Administrativo</h1>
+              <h1 className="text-lg font-semibold text-foreground">Cláudio Crot — Fisioterapeuta</h1>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
               <LogOut className="h-4 w-4 mr-2" />

@@ -1,27 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Calendar, CheckCircle, Clock, Users, Info } from "lucide-react";
-import { format, startOfDay, endOfDay, endOfWeek, addWeeks } from "date-fns";
+import { Calendar, CheckCircle, Clock, Users, MessageSquare } from "lucide-react";
+import { format, startOfDay, endOfDay, endOfWeek, addWeeks, subHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
-function getMockAppointments() {
-  const today = new Date();
-  const base = startOfDay(today);
-  return [
-    { id: "mock-1", patient_name: "Maria Silva", patient_phone: "5511999990001", reason: "Dor lombar", scheduled_at: new Date(base.getTime() + 9 * 3600000).toISOString(), status: "confirmed", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-2", patient_name: "João Santos", patient_phone: "5511999990002", reason: "Reabilitação joelho", scheduled_at: new Date(base.getTime() + 10 * 3600000).toISOString(), status: "pending", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-3", patient_name: "Ana Costa", patient_phone: "5511999990003", reason: "Fisioterapia respiratória", scheduled_at: new Date(base.getTime() + 14 * 3600000).toISOString(), status: "cancelled", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-    { id: "mock-4", patient_name: "Pedro Lima", patient_phone: "5511999990004", reason: "Avaliação postural", scheduled_at: new Date(base.getTime() + 16 * 3600000).toISOString(), status: "no_response", reminder_sent: false, calendar_event_id: null, created_at: today.toISOString(), updated_at: today.toISOString() },
-  ];
-}
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const today = new Date();
 
-  const { data: rawTodayAppointments = [] } = useQuery({
+  const { data: todayAppointments = [] } = useQuery({
     queryKey: ["appointments-today"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -35,7 +25,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: rawWeekAppointments = [] } = useQuery({
+  const { data: weekAppointments = [] } = useQuery({
     queryKey: ["appointments-week"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -49,10 +39,32 @@ export default function Dashboard() {
     },
   });
 
-  const isMock = rawTodayAppointments.length === 0 && rawWeekAppointments.length === 0;
-  const mockData = getMockAppointments();
-  const todayAppointments = isMock ? mockData : rawTodayAppointments;
-  const weekAppointments = isMock ? mockData : rawWeekAppointments;
+  const { data: activeConversations = 0 } = useQuery({
+    queryKey: ["active-conversations"],
+    queryFn: async () => {
+      const since = subHours(new Date(), 24).toISOString();
+      const { count, error } = await supabase
+        .from("conversations")
+        .select("*", { count: "exact", head: true })
+        .gte("updated_at", since);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["appointments-today"] });
+        queryClient.invalidateQueries({ queryKey: ["appointments-week"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["active-conversations"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const confirmed = todayAppointments.filter((a) => a.status === "confirmed").length;
   const pending = todayAppointments.filter((a) => a.status === "pending").length;
@@ -62,19 +74,20 @@ export default function Dashboard() {
     { label: "Consultas Hoje", value: total, icon: Calendar, color: "text-primary" },
     { label: "Confirmadas", value: confirmed, icon: CheckCircle, color: "text-status-confirmed" },
     { label: "Pendentes", value: pending, icon: Clock, color: "text-status-pending" },
-    { label: "Esta Semana", value: weekAppointments.length, icon: Users, color: "text-primary" },
+    { label: "Conversas Ativas", value: activeConversations, icon: MessageSquare, color: "text-primary" },
   ];
+
+  const statusCounts = [
+    { label: "Confirmadas", count: todayAppointments.filter(a => a.status === "confirmed").length, color: "bg-status-confirmed" },
+    { label: "Pendentes", count: todayAppointments.filter(a => a.status === "pending").length, color: "bg-status-pending" },
+    { label: "Canceladas", count: todayAppointments.filter(a => a.status === "cancelled").length, color: "bg-status-cancelled" },
+    { label: "Sem Resposta", count: todayAppointments.filter(a => a.status === "no_response").length, color: "bg-status-no-response" },
+  ];
+  const max = Math.max(...statusCounts.map(s => s.count), 1);
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Dashboard</h2>
-
-      {isMock && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>Dados de exemplo — serão substituídos por dados reais.</AlertDescription>
-        </Alert>
-      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
@@ -95,28 +108,17 @@ export default function Dashboard() {
           <CardTitle className="text-lg">Distribuição por Status</CardTitle>
         </CardHeader>
         <CardContent>
-          {(() => {
-            const statusCounts = [
-              { label: "Confirmadas", count: todayAppointments.filter(a => a.status === "confirmed").length, color: "bg-status-confirmed" },
-              { label: "Pendentes", count: todayAppointments.filter(a => a.status === "pending").length, color: "bg-status-pending" },
-              { label: "Canceladas", count: todayAppointments.filter(a => a.status === "cancelled").length, color: "bg-status-cancelled" },
-              { label: "Sem Resposta", count: todayAppointments.filter(a => a.status === "no_response").length, color: "bg-status-no-response" },
-            ];
-            const max = Math.max(...statusCounts.map(s => s.count), 1);
-            return (
-              <div className="space-y-3">
-                {statusCounts.map(s => (
-                  <div key={s.label} className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground w-28 shrink-0">{s.label}</span>
-                    <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
-                      <div className={`${s.color} h-full rounded-full transition-all`} style={{ width: `${(s.count / max) * 100}%`, minWidth: s.count > 0 ? '1.5rem' : 0 }} />
-                    </div>
-                    <span className="text-sm font-medium w-6 text-right">{s.count}</span>
-                  </div>
-                ))}
+          <div className="space-y-3">
+            {statusCounts.map(s => (
+              <div key={s.label} className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground w-28 shrink-0">{s.label}</span>
+                <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+                  <div className={`${s.color} h-full rounded-full transition-all`} style={{ width: `${(s.count / max) * 100}%`, minWidth: s.count > 0 ? '1.5rem' : 0 }} />
+                </div>
+                <span className="text-sm font-medium w-6 text-right">{s.count}</span>
               </div>
-            );
-          })()}
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -125,20 +127,24 @@ export default function Dashboard() {
           <CardTitle className="text-lg">Consultas de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {todayAppointments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div>
-                  <p className="font-medium">{a.patient_name || a.patient_phone}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(a.scheduled_at), "HH:mm")}
-                    {a.reason && ` — ${a.reason}`}
-                  </p>
+          {todayAppointments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma consulta agendada para hoje.</p>
+          ) : (
+            <div className="space-y-3">
+              {todayAppointments.map((a) => (
+                <div key={a.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="font-medium">{a.patient_name || a.patient_phone}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(a.scheduled_at), "HH:mm")}
+                      {a.reason && ` — ${a.reason}`}
+                    </p>
+                  </div>
+                  <StatusBadge status={a.status} />
                 </div>
-                <StatusBadge status={a.status} />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -147,19 +153,23 @@ export default function Dashboard() {
           <CardTitle className="text-lg">Próximas Consultas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {weekAppointments.slice(0, 10).map((a) => (
-              <div key={a.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div>
-                  <p className="font-medium">{a.patient_name || a.patient_phone}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(a.scheduled_at), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                  </p>
+          {weekAppointments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma consulta agendada para os próximos dias.</p>
+          ) : (
+            <div className="space-y-3">
+              {weekAppointments.slice(0, 10).map((a) => (
+                <div key={a.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="font-medium">{a.patient_name || a.patient_phone}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(a.scheduled_at), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                  <StatusBadge status={a.status} />
                 </div>
-                <StatusBadge status={a.status} />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

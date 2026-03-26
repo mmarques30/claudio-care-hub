@@ -54,8 +54,8 @@ export default function Login() {
           <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-2xl">
             C
           </div>
-          <CardTitle className="text-xl">Consultório Dr. Cláudio</CardTitle>
-          <CardDescription>Painel Administrativo — Fisioterapia</CardDescription>
+          <CardTitle className="text-xl">Cláudio Crot</CardTitle>
+          <CardDescription>Painel Administrativo — Fisioterapeuta</CardDescription>
         </CardHeader>
         <CardContent>
           {resetMode ? (

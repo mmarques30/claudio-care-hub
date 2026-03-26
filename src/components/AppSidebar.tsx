@@ -35,8 +35,8 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-sidebar-foreground">Dr. Cláudio</span>
-              <span className="text-xs text-sidebar-foreground/70">Fisioterapia</span>
+            <span className="font-bold text-sm text-sidebar-foreground">Cláudio Crot</span>
+              <span className="text-xs text-sidebar-foreground/70">Fisioterapeuta</span>
             </div>
           )}
         </div>
