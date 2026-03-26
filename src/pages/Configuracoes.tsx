@@ -9,14 +9,19 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
 const messageKeys = [
+  { key: "clinic_name", label: "Nome da Clínica" },
   { key: "welcome_message", label: "Mensagem de Boas-vindas" },
   { key: "personal_message", label: "Assunto Pessoal" },
   { key: "professional_menu", label: "Menu Profissional" },
   { key: "services_info", label: "Informações dos Serviços" },
   { key: "scheduling_message", label: "Mensagem de Agendamento" },
   { key: "calendly_link", label: "Link do Calendly" },
+  { key: "instagram_link", label: "Link do Instagram" },
   { key: "takeover_duration_minutes", label: "Duração do Takeover (minutos)" },
 ];
+
+const inputKeys = ["calendly_link", "instagram_link", "clinic_name"];
+const numberKeys = ["takeover_duration_minutes"];
 
 export default function Configuracoes() {
   const queryClient = useQueryClient();
@@ -63,34 +68,26 @@ export default function Configuracoes() {
           {messageKeys.map(({ key, label }) => (
             <div key={key} className="space-y-2">
               <Label>{label}</Label>
-              {key === "takeover_duration_minutes" ? (
+              {numberKeys.includes(key) ? (
                 <div className="flex gap-2">
                   <Input
                     type="number"
                     value={messages[key] || ""}
                     onChange={(e) => setMessages({ ...messages, [key]: e.target.value })}
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })}
-                    disabled={saveMessage.isPending}
-                  >
+                  <Button size="sm" onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })} disabled={saveMessage.isPending}>
                     Salvar
                   </Button>
                 </div>
-              ) : key === "calendly_link" ? (
+              ) : inputKeys.includes(key) ? (
                 <div className="flex gap-2">
                   <Input
-                    type="url"
+                    type={key.includes("link") ? "url" : "text"}
                     value={messages[key] || ""}
                     onChange={(e) => setMessages({ ...messages, [key]: e.target.value })}
-                    placeholder="https://calendly.com/..."
+                    placeholder={key === "calendly_link" ? "https://calendly.com/..." : key === "instagram_link" ? "https://www.instagram.com/..." : ""}
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })}
-                    disabled={saveMessage.isPending}
-                  >
+                  <Button size="sm" onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })} disabled={saveMessage.isPending}>
                     Salvar
                   </Button>
                 </div>
@@ -101,11 +98,7 @@ export default function Configuracoes() {
                     value={messages[key] || ""}
                     onChange={(e) => setMessages({ ...messages, [key]: e.target.value })}
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })}
-                    disabled={saveMessage.isPending}
-                  >
+                  <Button size="sm" onClick={() => saveMessage.mutate({ key, value: messages[key] || "" })} disabled={saveMessage.isPending}>
                     Salvar
                   </Button>
                 </div>
