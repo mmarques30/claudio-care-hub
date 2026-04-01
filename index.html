@@ -1,30 +1,848 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Claudio Crot</title>
-    <meta name="description" content="Lovable Generated Project">
-    <meta name="author" content="Lovable" />
-
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f75c355-4772-4a0f-a17f-fd27f130c285/id-preview-f00d948b--3fdcaef4-788a-4b5c-adbd-aaa67d8d2df7.lovable.app-1774296433299.png">
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f75c355-4772-4a0f-a17f-fd27f130c285/id-preview-f00d948b--3fdcaef4-788a-4b5c-adbd-aaa67d8d2df7.lovable.app-1774296433299.png">
-    <meta property="og:title" content="Claudio Crot">
-  <meta name="twitter:title" content="Claudio Crot">
-  <meta property="og:description" content="Lovable Generated Project">
-  <meta name="twitter:description" content="Lovable Generated Project">
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CROT — Fisioterapia & Pilates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --bg: #faf8f6;
+  --bg-card: #ffffff;
+  --bg-sidebar: #7B1E1E;
+  --bg-sidebar-hover: #933232;
+  --bg-sidebar-active: #A03A3A;
+  --text: #2c1810;
+  --text-sec: #6b5549;
+  --text-light: #9a8880;
+  --text-sb: #e8c4c4;
+  --accent: #7B1E1E;
+  --accent-light: #f8e8e8;
+  --accent-hover: #5e1616;
+  --border: #e8ddd6;
+  --border-lt: #f0e8e2;
+  --green: #2d7a55; --green-bg: #e5f5ed;
+  --yellow: #b8861f; --yellow-bg: #fef5e0;
+  --red: #7B1E1E; --red-bg: #f8e8e8;
+  --blue: #3a6ecc; --blue-bg: #e8f0fe;
+  --purple: #7c5cbf; --purple-bg: #f0ecf8;
+  --shadow-sm: 0 1px 3px rgba(44,24,16,0.06);
+  --shadow-md: 0 4px 12px rgba(44,24,16,0.08);
+  --shadow-lg: 0 8px 24px rgba(44,24,16,0.12);
+  --r: 12px; --r-sm: 8px; --r-lg: 16px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',-apple-system,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+.app { display:flex; min-height:100vh; }
+.sidebar { width:260px; background:var(--bg-sidebar); color:var(--text-sb); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50; transition:transform .3s ease; }
+.sb-brand { padding:28px 24px 20px; border-bottom:1px solid rgba(255,255,255,.12); }
+.sb-brand h1 { font-family:'Playfair Display',serif; font-size:1.5rem; color:#fff; font-weight:700; letter-spacing:.15em; line-height:1.3; }
+.sb-brand p { font-size:.7rem; color:var(--text-sb); margin-top:4px; text-transform:uppercase; letter-spacing:.12em; font-weight:400; }
+.sb-nav { padding:16px 12px; flex:1; }
+.sb-nav button { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:var(--r-sm); color:var(--text-sb); font-size:.9rem; font-weight:400; transition:all .2s; margin-bottom:2px; background:none; border:none; cursor:pointer; width:100%; text-align:left; font-family:inherit; }
+.sb-nav button:hover { background:var(--bg-sidebar-hover); color:#fff; }
+.sb-nav button.active { background:var(--bg-sidebar-active); color:#fff; font-weight:500; }
+.sb-footer { padding:16px 20px; border-top:1px solid rgba(255,255,255,.12); font-size:.7rem; color:rgba(232,196,196,.4); letter-spacing:.03em; }
+.main { flex:1; margin-left:260px; padding:32px 36px; min-height:100vh; }
+.page-hdr { margin-bottom:28px; }
+.page-hdr h2 { font-family:'Playfair Display',serif; font-size:1.75rem; font-weight:600; letter-spacing:-.01em; color:var(--text); }
+.page-hdr p { color:var(--text-sec); font-size:.9rem; margin-top:4px; }
+.card { background:var(--bg-card); border-radius:var(--r); border:1px solid var(--border-lt); box-shadow:var(--shadow-sm); padding:24px; margin-bottom:20px; }
+.card-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.card-hdr h3 { font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:28px; }
+.stat { background:var(--bg-card); border-radius:var(--r); border:1px solid var(--border-lt); box-shadow:var(--shadow-sm); padding:20px 24px; display:flex; align-items:flex-start; gap:16px; transition:box-shadow .2s,transform .2s; }
+.stat:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.stat-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.85rem; font-weight:700; }
+.stat-icon.g { background:var(--green-bg); color:var(--green); }
+.stat-icon.y { background:var(--yellow-bg); color:var(--yellow); }
+.stat-icon.r { background:var(--red-bg); color:var(--red); }
+.stat-icon.b { background:var(--blue-bg); color:var(--blue); }
+.stat-icon.p { background:var(--purple-bg); color:var(--purple); }
+.stat h4 { font-size:.75rem; font-weight:500; text-transform:uppercase; letter-spacing:.06em; color:var(--text-light); margin-bottom:4px; }
+.stat .num { font-family:'Playfair Display',serif; font-size:2rem; font-weight:600; line-height:1; }
+.stat .sub { font-size:.75rem; color:var(--text-light); margin-top:4px; }
+table { width:100%; border-collapse:collapse; }
+thead th { text-align:left; padding:12px 16px; font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-light); border-bottom:2px solid var(--border); }
+tbody td { padding:14px 16px; font-size:.875rem; border-bottom:1px solid var(--border-lt); }
+tbody tr { transition:background .15s; }
+tbody tr:hover { background:rgba(123,30,30,.03); }
+tbody tr:last-child td { border-bottom:none; }
+.badge { display:inline-flex; padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:600; }
+.badge-confirmed { background:var(--green-bg); color:var(--green); }
+.badge-pending { background:var(--yellow-bg); color:var(--yellow); }
+.badge-cancelled { background:var(--red-bg); color:var(--red); }
+.badge-active { background:var(--blue-bg); color:var(--blue); }
+.badge-paused { background:var(--purple-bg); color:var(--purple); }
+.btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:var(--r-sm); font-size:.875rem; font-weight:500; border:none; cursor:pointer; transition:all .2s; font-family:inherit; }
+.btn-p { background:var(--accent); color:#fff; }
+.btn-p:hover { background:var(--accent-hover); }
+.btn-o { background:transparent; color:var(--text); border:1px solid var(--border); }
+.btn-o:hover { background:var(--bg); }
+.btn-s { padding:6px 14px; font-size:.8rem; }
+.btn-ok { background:var(--green); color:#fff; }
+.btn-ok:hover { background:#246845; }
+.btn-no { background:var(--red); color:#fff; }
+.btn-no:hover { background:var(--accent-hover); }
+.btns { display:flex; gap:6px; }
+.ph-link { color:var(--accent); text-decoration:none; font-weight:500; }
+.ph-link:hover { text-decoration:underline; }
+.filters { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+.fbtn { padding:7px 16px; border-radius:20px; font-size:.8rem; font-weight:500; border:1px solid var(--border); background:var(--bg-card); cursor:pointer; transition:all .2s; font-family:inherit; color:var(--text-sec); }
+.fbtn:hover { border-color:var(--accent); color:var(--accent); }
+.fbtn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+.sinput { padding:8px 14px; border:1px solid var(--border); border-radius:20px; font-size:.85rem; font-family:inherit; color:var(--text); background:var(--bg-card); width:220px; }
+.sinput:focus { outline:none; border-color:var(--accent); }
+.fg { margin-bottom:20px; }
+.fg label { display:block; font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:8px; }
+.fg input, .fg textarea { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:var(--r-sm); font-size:.9rem; font-family:inherit; color:var(--text); background:var(--bg-card); }
+.fg input:focus, .fg textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(123,30,30,.1); }
+.fg textarea { min-height:80px; resize:vertical; }
+.cgrid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.cgrid .full { grid-column:1/-1; }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--bg-sidebar); color:#fff; padding:14px 24px; border-radius:var(--r-sm); font-size:.875rem; box-shadow:var(--shadow-lg); z-index:1000; animation:su .3s ease; }
+@keyframes su { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.empty { text-align:center; padding:48px 20px; color:var(--text-light); }
+.loading { display:flex; align-items:center; justify-content:center; padding:40px; }
+.spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:sp .8s linear infinite; }
+@keyframes sp { to{transform:rotate(360deg)} }
+.rdot { display:inline-block; width:8px; height:8px; background:var(--green); border-radius:50%; margin-right:8px; animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+.bar-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.bar-label { font-size:.85rem; color:var(--text-sec); width:160px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bar-track { flex:1; height:24px; background:var(--border-lt); border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; background:var(--accent); border-radius:4px; transition:width .5s ease; min-width:2px; }
+.bar-val { font-size:.8rem; font-weight:600; color:var(--text); width:32px; text-align:right; flex-shrink:0; }
+.proj-val { font-family:'Playfair Display',serif; font-size:2.2rem; font-weight:600; color:var(--accent); }
+.proj-sub { font-size:.85rem; color:var(--text-sec); margin-top:4px; }
+/* Calendar view */
+.cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.cal-title { font-family:'Playfair Display',serif; font-size:1.25rem; font-weight:600; color:var(--text); text-transform:capitalize; }
+.cal-nav { display:flex; gap:6px; }
+.cal-nav button { width:36px; height:36px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--bg-card); cursor:pointer; font-size:1rem; color:var(--text-sec); display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:inherit; }
+.cal-nav button:hover { background:var(--bg); border-color:var(--accent); color:var(--accent); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; background:var(--border-lt); gap:1px; }
+.cal-dow { padding:10px 4px; text-align:center; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text-light); background:var(--bg); }
+.cal-day { min-height:100px; padding:6px 8px; background:var(--bg-card); cursor:pointer; transition:background .15s; position:relative; vertical-align:top; }
+.cal-day:hover { background:rgba(123,30,30,.02); }
+.cal-day.other { background:#faf8f5; }
+.cal-day.other .cal-num { color:var(--text-light); opacity:.4; }
+.cal-day.today { background:rgba(123,30,30,.04); }
+.cal-day.today .cal-num { background:var(--accent); color:#fff; }
+.cal-num { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; font-size:.8rem; font-weight:500; color:var(--text-sec); margin-bottom:4px; }
+.cal-evt { display:block; padding:2px 6px; margin-bottom:2px; border-radius:4px; font-size:.7rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition:opacity .15s; line-height:1.5; }
+.cal-evt:hover { opacity:.85; }
+.cal-evt.confirmed { background:var(--green-bg); color:var(--green); border-left:3px solid var(--green); }
+.cal-evt.pending { background:var(--yellow-bg); color:var(--yellow); border-left:3px solid var(--yellow); }
+.cal-evt.cancelled { background:var(--red-bg); color:var(--red); border-left:3px solid var(--red); text-decoration:line-through; opacity:.6; }
+.cal-more { font-size:.65rem; color:var(--accent); font-weight:600; padding:1px 6px; cursor:pointer; }
+.cal-more:hover { text-decoration:underline; }
+.cal-detail-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:100; display:flex; align-items:center; justify-content:center; }
+.cal-detail { background:var(--bg-card); border-radius:var(--r-lg); box-shadow:var(--shadow-lg); width:420px; max-width:90vw; max-height:80vh; overflow-y:auto; }
+.cal-detail-hdr { padding:20px 24px 16px; border-bottom:1px solid var(--border-lt); display:flex; justify-content:space-between; align-items:center; }
+.cal-detail-hdr h3 { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:600; }
+.cal-detail-close { background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--text-light); padding:4px 8px; border-radius:4px; }
+.cal-detail-close:hover { background:var(--bg); color:var(--text); }
+.cal-detail-body { padding:16px 24px 24px; }
+.cal-detail-item { padding:12px 0; border-bottom:1px solid var(--border-lt); }
+.cal-detail-item:last-child { border-bottom:none; }
+.cal-detail-time { font-size:.8rem; font-weight:600; color:var(--accent); margin-bottom:4px; }
+.cal-detail-name { font-weight:600; font-size:.9rem; margin-bottom:2px; }
+.cal-detail-info { font-size:.8rem; color:var(--text-sec); }
+.sub-tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--bg); border-radius:var(--r-sm); padding:3px; border:1px solid var(--border-lt); width:fit-content; }
+.sub-tab { padding:8px 20px; border-radius:6px; font-size:.85rem; font-weight:500; border:none; cursor:pointer; background:transparent; color:var(--text-sec); transition:all .2s; font-family:inherit; }
+.sub-tab:hover { color:var(--text); }
+.sub-tab.on { background:var(--bg-card); color:var(--accent); box-shadow:var(--shadow-sm); font-weight:600; }
+.cal-today-btn { padding:7px 16px; border-radius:20px; font-size:.8rem; font-weight:500; border:1px solid var(--border); background:var(--bg-card); cursor:pointer; font-family:inherit; color:var(--text-sec); transition:all .2s; }
+.cal-today-btn:hover { border-color:var(--accent); color:var(--accent); }
+.mob-toggle { display:none; }
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main { margin-left:0; padding:20px 16px; }
+  .stats { grid-template-columns:1fr 1fr; }
+  .two-col { grid-template-columns:1fr; }
+  .cgrid { grid-template-columns:1fr; }
+  .mob-toggle { display:flex!important; position:fixed; top:16px; left:16px; z-index:60; background:var(--bg-sidebar); color:#fff; border:none; border-radius:8px; width:40px; height:40px; align-items:center; justify-content:center; cursor:pointer; font-size:1.2rem; }
+  .sb-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:40; }
+}
+</style>
 </head>
+<body>
+<div id="root"></div>
+<script>
+const e = React.createElement;
+const { useState, useEffect, useCallback } = React;
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+const sb = supabase.createClient(
+  'https://cjrvjwrhcpsiucchhcry.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnZqd3JoY3BzaXVjY2hoY3J5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNjM1MzMsImV4cCI6MjA4OTkzOTUzM30.AuVUE4mSWIopN5p9hNjysEShIBvX0XFafzpk_UHQpJo'
+);
+
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }); }
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', timeZone:'America/Sao_Paulo' }); }
+function fmtPhone(p) { if(!p) return '--'; return p.replace(/^55/,'').replace(/(\d{2})(\d{4,5})(\d{4})/,'($1) $2-$3'); }
+function fmtBRL(v) { return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+function timeAgo(iso) {
+  if(!iso) return '--';
+  const m = Math.floor((Date.now()-new Date(iso).getTime())/60000);
+  if(m<1) return 'agora'; if(m<60) return m+'min'; const h=Math.floor(m/60);
+  if(h<24) return h+'h'; return Math.floor(h/24)+'d';
+}
+const SL = { inicio:'Inicio', menu_principal:'Menu principal', menu_profissional:'Menu profissional', motivo_consulta:'Motivo consulta', duvidas:'Duvidas', agendamento:'Agendamento', pausado:'Pausado (manual)' };
+const statusLabel = s => s==='confirmed'?'Confirmada':s==='pending'?'Pendente':'Cancelada';
+
+// === DASHBOARD ===
+function Dashboard() {
+  const [stats, setStats] = useState({ confirmed:0, pending:0, cancelled:0, total:0, conversations:0 });
+  const [upcoming, setUpcoming] = useState([]);
+  const [topReasons, setTopReasons] = useState([]);
+  const [topPatients, setTopPatients] = useState([]);
+  const [projection, setProjection] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const fetch_ = useCallback(async () => {
+    const now = new Date().toISOString();
+    const [a,b,c,d] = await Promise.all([
+      sb.from('appointments').select('*',{count:'exact',head:true}).eq('status','confirmed'),
+      sb.from('appointments').select('*',{count:'exact',head:true}).eq('status','pending'),
+      sb.from('appointments').select('*',{count:'exact',head:true}).eq('status','cancelled'),
+      sb.from('conversations').select('*',{count:'exact',head:true}),
+    ]);
+    const confirmed = a.count||0, pending = b.count||0, cancelled = c.count||0;
+    setStats({ confirmed, pending, cancelled, total:confirmed+pending+cancelled, conversations:d.count||0 });
+
+    // Projecao: consultas confirmadas + pendentes * R$250
+    setProjection((confirmed + pending) * 250);
+
+    // Proximas consultas
+    const { data: up } = await sb.from('appointments').select('*').gte('scheduled_at',now).in('status',['pending','confirmed']).order('scheduled_at',{ascending:true}).limit(6);
+    setUpcoming(up||[]);
+
+    // Todas consultas para analise
+    const { data: allApts } = await sb.from('appointments').select('reason, patient_name, patient_phone, status');
+
+    if (allApts && allApts.length > 0) {
+      // Top motivos
+      const reasonMap = {};
+      allApts.forEach(a => {
+        const r = a.reason || 'Nao informado';
+        reasonMap[r] = (reasonMap[r]||0) + 1;
+      });
+      const sorted = Object.entries(reasonMap).sort((a,b) => b[1]-a[1]).slice(0,5);
+      setTopReasons(sorted);
+
+      // Top pacientes (por telefone para evitar duplicatas por nome)
+      const patMap = {};
+      allApts.filter(a => a.status !== 'cancelled').forEach(a => {
+        const key = a.patient_phone || a.patient_name || 'Desconhecido';
+        if (!patMap[key]) patMap[key] = { name: a.patient_name || '--', count: 0 };
+        patMap[key].count++;
+      });
+      const sortedPat = Object.values(patMap).sort((a,b) => b.count - a.count).slice(0,5);
+      setTopPatients(sortedPat);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetch_();
+    const ch = sb.channel('dash-rt').on('postgres_changes',{event:'*',schema:'public',table:'appointments'},fetch_).on('postgres_changes',{event:'*',schema:'public',table:'conversations'},fetch_).subscribe();
+    return () => sb.removeChannel(ch);
+  }, [fetch_]);
+
+  if(loading) return e('div',{className:'loading'},e('div',{className:'spinner'}));
+
+  const maxReason = topReasons.length > 0 ? topReasons[0][1] : 1;
+
+  return e(React.Fragment, null,
+    e('div',{className:'page-hdr'}, e('h2',null,'Dashboard'), e('p',null,e('span',{className:'rdot'}),'Dados em tempo real')),
+
+    // Stats
+    e('div',{className:'stats'},
+      e('div',{className:'stat'}, e('div',{className:'stat-icon g'},'OK'), e('div',null, e('h4',null,'Confirmadas'), e('div',{className:'num'},stats.confirmed))),
+      e('div',{className:'stat'}, e('div',{className:'stat-icon y'},'...'), e('div',null, e('h4',null,'Pendentes'), e('div',{className:'num'},stats.pending))),
+      e('div',{className:'stat'}, e('div',{className:'stat-icon r'},'X'), e('div',null, e('h4',null,'Canceladas'), e('div',{className:'num'},stats.cancelled))),
+      e('div',{className:'stat'}, e('div',{className:'stat-icon b'},'#'), e('div',null, e('h4',null,'Total'), e('div',{className:'num'},stats.total))),
+      e('div',{className:'stat'}, e('div',{className:'stat-icon p'},'W'), e('div',null, e('h4',null,'Conversas'), e('div',{className:'num'},stats.conversations)))
+    ),
+
+    // Projecao + top pacientes
+    e('div',{className:'two-col'},
+      e('div',{className:'card'},
+        e('div',{className:'card-hdr'}, e('h3',null,'Projecao de faturamento')),
+        e('div',{className:'proj-val'}, fmtBRL(projection)),
+        e('p',{className:'proj-sub'}, (stats.confirmed+stats.pending)+' consultas ativas x R$ 250,00'),
+        e('p',{className:'proj-sub',style:{marginTop:8,fontSize:'.8rem',color:'var(--text-light)'}}, 'Canceladas nao incluidas na projecao')
+      ),
+      e('div',{className:'card'},
+        e('div',{className:'card-hdr'}, e('h3',null,'Pacientes mais frequentes')),
+        topPatients.length === 0
+          ? e('div',{className:'empty',style:{padding:20}},e('p',null,'Sem dados suficientes'))
+          : topPatients.map((p,i) => e('div',{key:i,className:'bar-row'},
+              e('span',{className:'bar-label'}, p.name),
+              e('div',{className:'bar-track'}, e('div',{className:'bar-fill',style:{width: (p.count/topPatients[0].count*100)+'%'}})),
+              e('span',{className:'bar-val'}, p.count)
+            ))
+      )
+    ),
+
+    // Top motivos
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Tipos de atendimento mais frequentes')),
+      topReasons.length === 0
+        ? e('div',{className:'empty',style:{padding:20}},e('p',null,'Sem dados suficientes'))
+        : topReasons.map((r,i) => e('div',{key:i,className:'bar-row'},
+            e('span',{className:'bar-label'}, r[0]),
+            e('div',{className:'bar-track'}, e('div',{className:'bar-fill',style:{width: (r[1]/maxReason*100)+'%'}})),
+            e('span',{className:'bar-val'}, r[1])
+          ))
+    ),
+
+    // Proximas consultas
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Proximas consultas')),
+      upcoming.length===0 ? e('div',{className:'empty'},e('p',null,'Nenhuma consulta agendada')) :
+      e('table',null,
+        e('thead',null,e('tr',null, e('th',null,'Paciente'),e('th',null,'Data'),e('th',null,'Horario'),e('th',null,'Motivo'),e('th',null,'Status'),e('th',null,'Telefone'))),
+        e('tbody',null, upcoming.map(a => e('tr',{key:a.id},
+          e('td',null,e('strong',null,a.patient_name||'--')),
+          e('td',null,fmtDate(a.scheduled_at)),
+          e('td',null,fmtTime(a.scheduled_at)),
+          e('td',null,a.reason||'--'),
+          e('td',null,e('span',{className:'badge badge-'+a.status},statusLabel(a.status))),
+          e('td',null,a.patient_phone?e('a',{className:'ph-link',href:'https://wa.me/'+a.patient_phone,target:'_blank'},fmtPhone(a.patient_phone)):'--')
+        )))
+      )
+    )
+  );
+}
+
+// === CALENDAR HELPERS ===
+function getMonthDays(year, month) {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const startDay = first.getDay(); // 0=Sun
+  const totalDays = last.getDate();
+  const cells = [];
+  // Previous month fill
+  const prevLast = new Date(year, month, 0).getDate();
+  for (let i = startDay - 1; i >= 0; i--) cells.push({ day: prevLast - i, month: month - 1, year, other: true });
+  // Current month
+  for (let d = 1; d <= totalDays; d++) cells.push({ day: d, month, year, other: false });
+  // Next month fill
+  const remain = 42 - cells.length; // always 6 rows
+  for (let d = 1; d <= remain; d++) cells.push({ day: d, month: month + 1, year, other: true });
+  return cells;
+}
+const MONTH_NAMES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+
+function CalendarView({ apts, onUpdate }) {
+  const now = new Date();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [showCancelled, setShowCancelled] = useState(false);
+
+  const prev = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); } else setViewMonth(viewMonth - 1); };
+  const next = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); } else setViewMonth(viewMonth + 1); };
+  const goToday = () => { setViewYear(now.getFullYear()); setViewMonth(now.getMonth()); };
+
+  const cells = getMonthDays(viewYear, viewMonth);
+
+  // Group appointments by date key (YYYY-MM-DD in SP timezone)
+  const aptsByDate = {};
+  apts.forEach(a => {
+    if (!showCancelled && a.status === 'cancelled') return;
+    const d = new Date(a.scheduled_at);
+    const spDate = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+    if (!aptsByDate[spDate]) aptsByDate[spDate] = [];
+    aptsByDate[spDate].push(a);
+  });
+  // Sort each day by time
+  Object.values(aptsByDate).forEach(arr => arr.sort((a,b) => new Date(a.scheduled_at) - new Date(b.scheduled_at)));
+
+  const todayKey = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+  // Detail modal data
+  const selectedApts = selectedDay ? (aptsByDate[selectedDay] || []) : [];
+  const selectedDate = selectedDay ? new Date(selectedDay + 'T12:00:00') : null;
+
+  const MAX_VISIBLE = 3;
+
+  return e(React.Fragment, null,
+    // Calendar header
+    e('div', {className:'cal-header'},
+      e('div', {style:{display:'flex',alignItems:'center',gap:12}},
+        e('span', {className:'cal-title'}, MONTH_NAMES[viewMonth] + ' ' + viewYear),
+        e('button', {className:'cal-today-btn', onClick:goToday}, 'Hoje')
+      ),
+      e('div', {style:{display:'flex',alignItems:'center',gap:12}},
+        e('label', {style:{display:'flex',alignItems:'center',gap:6,fontSize:'.8rem',color:'var(--text-sec)',cursor:'pointer'}},
+          e('input', {type:'checkbox', checked:showCancelled, onChange:x=>setShowCancelled(x.target.checked)}),
+          'Mostrar canceladas'
+        ),
+        e('div', {className:'cal-nav'},
+          e('button', {onClick:prev}, '<'),
+          e('button', {onClick:next}, '>')
+        )
+      )
+    ),
+
+    // Grid
+    e('div', {className:'cal-grid'},
+      // Day-of-week headers
+      DOW.map(d => e('div', {key:d, className:'cal-dow'}, d)),
+      // Day cells
+      cells.map((c, i) => {
+        const realMonth = c.month < 0 ? 11 : c.month > 11 ? 0 : c.month;
+        const realYear = c.month < 0 ? c.year - 1 : c.month > 11 ? c.year + 1 : c.year;
+        const dateKey = realYear + '-' + String(realMonth + 1).padStart(2,'0') + '-' + String(c.day).padStart(2,'0');
+        const dayApts = aptsByDate[dateKey] || [];
+        const isToday = dateKey === todayKey;
+        const cls = 'cal-day' + (c.other ? ' other' : '') + (isToday ? ' today' : '');
+
+        return e('div', {key:i, className:cls, onClick:() => { if(dayApts.length > 0) setSelectedDay(dateKey); }},
+          e('span', {className:'cal-num'}, c.day),
+          dayApts.slice(0, MAX_VISIBLE).map(a =>
+            e('div', {key:a.id, className:'cal-evt ' + a.status},
+              fmtTime(a.scheduled_at) + ' ' + (a.patient_name || '--').split(' ')[0]
+            )
+          ),
+          dayApts.length > MAX_VISIBLE && e('div', {className:'cal-more'}, '+' + (dayApts.length - MAX_VISIBLE) + ' mais')
+        );
+      })
+    ),
+
+    // Detail modal
+    selectedDay && e('div', {className:'cal-detail-overlay', onClick:(ev) => { if(ev.target === ev.currentTarget) setSelectedDay(null); }},
+      e('div', {className:'cal-detail'},
+        e('div', {className:'cal-detail-hdr'},
+          e('h3', null, selectedDate ? selectedDate.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'}) : ''),
+          e('button', {className:'cal-detail-close', onClick:()=>setSelectedDay(null)}, 'X')
+        ),
+        e('div', {className:'cal-detail-body'},
+          selectedApts.length === 0
+            ? e('p', {style:{color:'var(--text-light)',fontSize:'.9rem'}}, 'Nenhuma consulta neste dia')
+            : selectedApts.map(a => e('div', {key:a.id, className:'cal-detail-item'},
+                e('div', {className:'cal-detail-time'}, fmtTime(a.scheduled_at)),
+                e('div', {className:'cal-detail-name'}, a.patient_name || '--'),
+                e('div', {className:'cal-detail-info'}, (a.reason || 'Sem motivo') + '  |  ' + e('span',{className:'badge badge-'+a.status},statusLabel(a.status)).props ? statusLabel(a.status) : ''),
+                e('div', {style:{marginTop:6}},
+                  e('span', {className:'badge badge-'+a.status, style:{marginRight:8}}, statusLabel(a.status)),
+                  a.patient_phone && e('a', {className:'ph-link', href:'https://wa.me/'+a.patient_phone, target:'_blank', style:{fontSize:'.8rem'}}, fmtPhone(a.patient_phone))
+                ),
+                e('div', {className:'btns', style:{marginTop:8}},
+                  a.status==='pending' && e(React.Fragment, null,
+                    e('button', {className:'btn btn-ok btn-s', onClick:()=>{onUpdate(a.id,'confirmed');setSelectedDay(null);}}, 'Confirmar'),
+                    e('button', {className:'btn btn-no btn-s', onClick:()=>{onUpdate(a.id,'cancelled');setSelectedDay(null);}}, 'Cancelar')
+                  ),
+                  a.status==='confirmed' && e('button', {className:'btn btn-no btn-s', onClick:()=>{onUpdate(a.id,'cancelled');setSelectedDay(null);}}, 'Cancelar')
+                )
+              ))
+        )
+      )
+    )
+  );
+}
+
+// === AGENDA ===
+function Agenda() {
+  const [apts, setApts] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [view, setView] = useState('calendario');
+
+  const fetch_ = useCallback(async () => {
+    // For calendar, always fetch all; for list, apply filter
+    const { data } = await sb.from('appointments').select('*').order('scheduled_at',{ascending:false});
+    setApts(data||[]); setLoading(false);
+  }, []);
+  useEffect(() => {
+    fetch_();
+    const ch = sb.channel('agenda-rt').on('postgres_changes',{event:'*',schema:'public',table:'appointments'},fetch_).subscribe();
+    return () => sb.removeChannel(ch);
+  }, [fetch_]);
+  const upd = async (id,st) => {
+    await sb.from('appointments').update({status:st,updated_at:new Date().toISOString()}).eq('id',id);
+    setToast('Consulta '+(st==='confirmed'?'confirmada':'cancelada')+'!');
+    setTimeout(()=>setToast(null),3000); fetch_();
+  };
+
+  const filteredApts = apts.filter(a => {
+    if (filter !== 'all' && a.status !== filter) return false;
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (a.patient_name||'').toLowerCase().includes(s)||(a.patient_phone||'').includes(s)||(a.reason||'').toLowerCase().includes(s);
+  });
+
+  if(loading) return e('div',{className:'loading'},e('div',{className:'spinner'}));
+
+  return e(React.Fragment,null,
+    e('div',{className:'page-hdr'}, e('h2',null,'Agenda'), e('p',null,'Gerencie todas as consultas')),
+
+    // Sub-tabs
+    e('div',{className:'sub-tabs'},
+      e('button',{className:'sub-tab'+(view==='calendario'?' on':''),onClick:()=>setView('calendario')},'Calendario'),
+      e('button',{className:'sub-tab'+(view==='lista'?' on':''),onClick:()=>setView('lista')},'Lista')
+    ),
+
+    // CALENDAR VIEW
+    view === 'calendario' && e('div',{className:'card',style:{padding:20}},
+      e(CalendarView, { apts: apts, onUpdate: upd })
+    ),
+
+    // LIST VIEW
+    view === 'lista' && e(React.Fragment, null,
+      e('div',{className:'filters'},
+        ['all','pending','confirmed','cancelled'].map(f => e('button',{key:f,className:'fbtn'+(filter===f?' on':''),onClick:()=>setFilter(f)}, f==='all'?'Todas':f==='pending'?'Pendentes':f==='confirmed'?'Confirmadas':'Canceladas')),
+        e('input',{className:'sinput',placeholder:'Buscar paciente...',value:search,onChange:x=>setSearch(x.target.value)})
+      ),
+      e('div',{className:'card'},
+        filteredApts.length===0 ? e('div',{className:'empty'},e('p',null,'Nenhuma consulta encontrada')) :
+        e('table',null,
+          e('thead',null,e('tr',null, e('th',null,'Paciente'),e('th',null,'Data'),e('th',null,'Horario'),e('th',null,'Motivo'),e('th',null,'Status'),e('th',null,'Telefone'),e('th',null,'Acoes'))),
+          e('tbody',null, filteredApts.map(a => e('tr',{key:a.id},
+            e('td',null,e('strong',null,a.patient_name||'--')),
+            e('td',null,fmtDate(a.scheduled_at)),
+            e('td',null,fmtTime(a.scheduled_at)),
+            e('td',null,a.reason||'--'),
+            e('td',null,e('span',{className:'badge badge-'+a.status},statusLabel(a.status))),
+            e('td',null,a.patient_phone?e('a',{className:'ph-link',href:'https://wa.me/'+a.patient_phone,target:'_blank'},fmtPhone(a.patient_phone)):'--'),
+            e('td',null,e('div',{className:'btns'},
+              a.status==='pending' && e(React.Fragment,null,
+                e('button',{className:'btn btn-ok btn-s',onClick:()=>upd(a.id,'confirmed')},'Confirmar'),
+                e('button',{className:'btn btn-no btn-s',onClick:()=>upd(a.id,'cancelled')},'Cancelar')
+              ),
+              a.status==='confirmed' && e('button',{className:'btn btn-no btn-s',onClick:()=>upd(a.id,'cancelled')},'Cancelar'),
+              a.status==='cancelled' && e('span',{style:{color:'var(--text-light)',fontSize:'.8rem'}},'--')
+            ))
+          )))
+        )
+      )
+    ),
+
+    toast && e('div',{className:'toast'},toast)
+  );
+}
+
+// === CONVERSAS ===
+function Conversas() {
+  const [convs, setConvs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const fetch_ = useCallback(async () => {
+    const { data } = await sb.from('conversations').select('*').order('updated_at',{ascending:false});
+    setConvs(data||[]); setLoading(false);
+  }, []);
+  useEffect(() => {
+    fetch_();
+    const ch = sb.channel('conv-rt').on('postgres_changes',{event:'*',schema:'public',table:'conversations'},fetch_).subscribe();
+    return () => sb.removeChannel(ch);
+  }, [fetch_]);
+  const reset_ = async (id) => {
+    await sb.from('conversations').update({current_state:'inicio',pending_reason:null,takeover_until:null,updated_at:new Date().toISOString()}).eq('id',id);
+    setToast('Conversa reiniciada!'); setTimeout(()=>setToast(null),3000); fetch_();
+  };
+  const pause_ = async (id) => {
+    await sb.from('conversations').update({current_state:'pausado',takeover_until:new Date(Date.now()+7200000).toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
+    setToast('Bot pausado por 2h'); setTimeout(()=>setToast(null),3000); fetch_();
+  };
+  const resume_ = async (id) => {
+    await sb.from('conversations').update({current_state:'inicio',takeover_until:null,updated_at:new Date().toISOString()}).eq('id',id);
+    setToast('Bot reativado!'); setTimeout(()=>setToast(null),3000); fetch_();
+  };
+  if(loading) return e('div',{className:'loading'},e('div',{className:'spinner'}));
+  return e(React.Fragment,null,
+    e('div',{className:'page-hdr'}, e('h2',null,'Conversas'), e('p',null,e('span',{className:'rdot'}),convs.length+' conversas')),
+    e('div',{className:'card'},
+      convs.length===0 ? e('div',{className:'empty'},e('p',null,'Nenhuma conversa')) :
+      e('table',null,
+        e('thead',null,e('tr',null, e('th',null,'Telefone'),e('th',null,'Estado'),e('th',null,'Motivo pendente'),e('th',null,'Atividade'),e('th',null,'Takeover'),e('th',null,'Acoes'))),
+        e('tbody',null, convs.map(c => {
+          const paused = c.current_state==='pausado'||(c.takeover_until&&new Date(c.takeover_until)>new Date());
+          return e('tr',{key:c.id},
+            e('td',null,e('a',{className:'ph-link',href:'https://wa.me/'+c.phone_number,target:'_blank'},fmtPhone(c.phone_number))),
+            e('td',null,e('span',{className:'badge '+(paused?'badge-paused':'badge-active')},SL[c.current_state]||c.current_state)),
+            e('td',null,c.pending_reason||'--'),
+            e('td',null,timeAgo(c.updated_at)),
+            e('td',null,paused&&c.takeover_until?e('span',{style:{fontSize:'.8rem',color:'var(--yellow)'}}, 'Ate '+new Date(c.takeover_until).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):'--'),
+            e('td',null,e('div',{className:'btns'},
+              paused ? e('button',{className:'btn btn-ok btn-s',onClick:()=>resume_(c.id)},'Reativar') : e('button',{className:'btn btn-o btn-s',onClick:()=>pause_(c.id)},'Pausar'),
+              e('button',{className:'btn btn-o btn-s',onClick:()=>reset_(c.id)},'Reset')
+            ))
+          );
+        }))
+      )
+    ),
+    toast && e('div',{className:'toast'},toast)
+  );
+}
+
+// === CONFIGURACOES (apenas campos editaveis uteis) ===
+function Configuracoes() {
+  const [cfg, setCfg] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    (async () => {
+      const { data } = await sb.from('bot_config').select('*');
+      const m = {}; (data||[]).forEach(r => m[r.key]=r.value); setCfg(m); setLoading(false);
+    })();
+  }, []);
+  const chg = (k,v) => setCfg(p => ({...p,[k]:v}));
+  const save = async () => {
+    setSaving(true);
+    await Promise.all(Object.entries(cfg).map(([k,v]) => sb.from('bot_config').update({value:v}).eq('key',k)));
+    setSaving(false); setToast('Configuracoes salvas!'); setTimeout(()=>setToast(null),3000);
+  };
+  if(loading) return e('div',{className:'loading'},e('div',{className:'spinner'}));
+  return e(React.Fragment,null,
+    e('div',{className:'page-hdr'}, e('h2',null,'Configuracoes'), e('p',null,'Ajustes gerais do consultorio e do bot')),
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Dados do consultorio')),
+      e('div',{className:'cgrid'},
+        e('div',{className:'fg'}, e('label',null,'Nome da clinica'), e('input',{value:cfg.clinic_name||'',onChange:x=>chg('clinic_name',x.target.value)})),
+        e('div',{className:'fg'}, e('label',null,'Link do Calendly'), e('input',{value:cfg.calendly_link||'',onChange:x=>chg('calendly_link',x.target.value)})),
+        e('div',{className:'fg'}, e('label',null,'Link do Instagram'), e('input',{value:cfg.instagram_link||'',onChange:x=>chg('instagram_link',x.target.value)})),
+        e('div',{className:'fg'}, e('label',null,'Duracao takeover (min)'), e('input',{value:cfg.takeover_duration_minutes||'',onChange:x=>chg('takeover_duration_minutes',x.target.value)}))
+      )
+    ),
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Mensagens do bot')),
+      e('p',{style:{fontSize:'.85rem',color:'var(--text-light)',marginBottom:16}}, 'Alteracoes aqui mudam as mensagens que o bot envia no WhatsApp.'),
+      e('div',null,
+        [{k:'welcome_message',l:'Mensagem de boas-vindas'},{k:'personal_message',l:'Mensagem pessoal'},{k:'professional_menu',l:'Menu profissional'},{k:'services_info',l:'Informacoes de servicos'},{k:'scheduling_message',l:'Mensagem de agendamento'}].map(f =>
+          e('div',{key:f.k,className:'fg'},
+            e('label',null,f.l),
+            e('textarea',{value:cfg[f.k]||'',onChange:x=>chg(f.k,x.target.value),rows:3})
+          )
+        )
+      )
+    ),
+    e('div',{style:{display:'flex',justifyContent:'flex-end'}},
+      e('button',{className:'btn btn-p',onClick:save,disabled:saving}, saving?'Salvando...':'Salvar configuracoes')
+    ),
+    toast && e('div',{className:'toast'},toast)
+  );
+}
+
+// === PACIENTES ===
+function Pacientes() {
+  const [patients, setPatients] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [apts, setApts] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [noteAptId, setNoteAptId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const fetchPatients = useCallback(async () => {
+    const { data } = await sb.from('appointments').select('patient_phone, patient_name').order('scheduled_at',{ascending:false});
+    if (data) {
+      const map = {};
+      data.forEach(a => {
+        if (a.patient_phone && !map[a.patient_phone]) {
+          map[a.patient_phone] = a.patient_name || '--';
+        }
+      });
+      const list = Object.entries(map).map(([phone,name]) => ({phone,name}));
+      setPatients(list);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchPatients(); }, [fetchPatients]);
+
+  const selectPatient = async (phone) => {
+    setSelected(phone);
+    const [{ data: aptData }, { data: noteData }] = await Promise.all([
+      sb.from('appointments').select('*').eq('patient_phone',phone).order('scheduled_at',{ascending:false}),
+      sb.from('patient_notes').select('*').eq('patient_phone',phone).order('created_at',{ascending:false}),
+    ]);
+    setApts(aptData||[]);
+    setNotes(noteData||[]);
+    setNewNote('');
+    setNoteAptId('');
+  };
+
+  const saveNote = async () => {
+    if (!newNote.trim()) return;
+    setSaving(true);
+    const patName = patients.find(p=>p.phone===selected)?.name || '--';
+    const ins = {
+      patient_phone: selected,
+      patient_name: patName,
+      note: newNote.trim(),
+    };
+    if (noteAptId) ins.appointment_id = noteAptId;
+    await sb.from('patient_notes').insert(ins);
+    setSaving(false);
+    setToast('Nota salva!');
+    setTimeout(()=>setToast(null),3000);
+    setNewNote('');
+    setNoteAptId('');
+    const { data } = await sb.from('patient_notes').select('*').eq('patient_phone',selected).order('created_at',{ascending:false});
+    setNotes(data||[]);
+  };
+
+  const deleteNote = async (id) => {
+    await sb.from('patient_notes').delete().eq('id',id);
+    setToast('Nota removida');
+    setTimeout(()=>setToast(null),3000);
+    const { data } = await sb.from('patient_notes').select('*').eq('patient_phone',selected).order('created_at',{ascending:false});
+    setNotes(data||[]);
+  };
+
+  if(loading) return e('div',{className:'loading'},e('div',{className:'spinner'}));
+
+  const filteredPats = patients.filter(p => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return p.name.toLowerCase().includes(s) || p.phone.includes(s);
+  });
+
+  const selName = selected ? (patients.find(p=>p.phone===selected)?.name || '--') : '';
+
+  // Lista de pacientes
+  if (!selected) {
+    return e(React.Fragment, null,
+      e('div',{className:'page-hdr'}, e('h2',null,'Pacientes'), e('p',null,patients.length+' pacientes registrados')),
+      e('div',{className:'filters'},
+        e('input',{className:'sinput',placeholder:'Buscar paciente...',value:search,onChange:x=>setSearch(x.target.value),style:{width:300}})
+      ),
+      e('div',{className:'card'},
+        filteredPats.length===0 ? e('div',{className:'empty'},e('p',null,'Nenhum paciente encontrado')) :
+        e('table',null,
+          e('thead',null,e('tr',null, e('th',null,'Paciente'),e('th',null,'Telefone'),e('th',null,'Acao'))),
+          e('tbody',null, filteredPats.map(p => e('tr',{key:p.phone},
+            e('td',null,e('strong',null,p.name)),
+            e('td',null,e('a',{className:'ph-link',href:'https://wa.me/'+p.phone,target:'_blank'},fmtPhone(p.phone))),
+            e('td',null,e('button',{className:'btn btn-o btn-s',onClick:()=>selectPatient(p.phone)},'Ver historico'))
+          )))
+        )
+      )
+    );
+  }
+
+  // Detalhe do paciente
+  return e(React.Fragment, null,
+    e('div',{className:'page-hdr'},
+      e('div',{style:{display:'flex',alignItems:'center',gap:16}},
+        e('button',{className:'btn btn-o btn-s',onClick:()=>setSelected(null)},'Voltar'),
+        e('div',null,
+          e('h2',null,selName),
+          e('p',null,fmtPhone(selected)+' | '+apts.length+' consultas | '+notes.length+' notas')
+        )
+      )
+    ),
+
+    // Historico de consultas
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Historico de consultas')),
+      apts.length===0 ? e('div',{className:'empty',style:{padding:16}},e('p',null,'Nenhuma consulta')) :
+      e('table',null,
+        e('thead',null,e('tr',null, e('th',null,'Data'),e('th',null,'Horario'),e('th',null,'Motivo'),e('th',null,'Status'))),
+        e('tbody',null, apts.map(a => e('tr',{key:a.id},
+          e('td',null,fmtDate(a.scheduled_at)),
+          e('td',null,fmtTime(a.scheduled_at)),
+          e('td',null,a.reason||'--'),
+          e('td',null,e('span',{className:'badge badge-'+a.status},statusLabel(a.status)))
+        )))
+      )
+    ),
+
+    // Notas existentes
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Notas e observacoes')),
+      notes.length===0 ? e('div',{style:{padding:'12px 0',color:'var(--text-light)',fontSize:'.9rem'}},'Nenhuma nota registrada para este paciente.') :
+      notes.map(n => e('div',{key:n.id,style:{borderBottom:'1px solid var(--border-lt)',padding:'14px 0'}},
+        e('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+          e('div',null,
+            e('p',{style:{fontSize:'.9rem',lineHeight:1.5}}, n.note),
+            e('p',{style:{fontSize:'.75rem',color:'var(--text-light)',marginTop:6}},
+              fmtDate(n.created_at) + ' ' + fmtTime(n.created_at) +
+              (n.appointment_id ? ' | Vinculada a consulta' : '')
+            )
+          ),
+          e('button',{className:'btn btn-o btn-s',onClick:()=>deleteNote(n.id),style:{flexShrink:0,marginLeft:12}},'Excluir')
+        )
+      ))
+    ),
+
+    // Nova nota
+    e('div',{className:'card'},
+      e('div',{className:'card-hdr'}, e('h3',null,'Adicionar nova nota')),
+      e('div',{className:'fg'},
+        e('label',null,'Vincular a consulta (opcional)'),
+        e('select',{value:noteAptId,onChange:x=>setNoteAptId(x.target.value),
+          style:{width:'100%',padding:'10px 14px',border:'1px solid var(--border)',borderRadius:'var(--r-sm)',fontSize:'.9rem',fontFamily:'inherit',color:'var(--text)',background:'var(--bg-card)'}},
+          e('option',{value:''},'Nota geral (sem vincular)'),
+          apts.map(a => e('option',{key:a.id,value:a.id}, fmtDate(a.scheduled_at)+' - '+(a.reason||'Sem motivo')+' ('+statusLabel(a.status)+')'))
+        )
+      ),
+      e('div',{className:'fg'},
+        e('label',null,'Observacao'),
+        e('textarea',{value:newNote,onChange:x=>setNewNote(x.target.value),rows:4,placeholder:'Escreva suas observacoes sobre o paciente, evolucao do tratamento, recomendacoes...'})
+      ),
+      e('div',{style:{display:'flex',justifyContent:'flex-end'}},
+        e('button',{className:'btn btn-p',onClick:saveNote,disabled:saving||!newNote.trim()}, saving?'Salvando...':'Salvar nota')
+      )
+    ),
+
+    toast && e('div',{className:'toast'},toast)
+  );
+}
+
+// === SIDEBAR ===
+function Sidebar({ page, setPage, open, setOpen }) {
+  const items = [
+    { id:'dashboard', label:'Dashboard' },
+    { id:'agenda', label:'Agenda' },
+    { id:'pacientes', label:'Pacientes' },
+    { id:'conversas', label:'Conversas' },
+    { id:'config', label:'Configuracoes' },
+  ];
+  return e(React.Fragment,null,
+    open && e('div',{className:'sb-overlay',onClick:()=>setOpen(false)}),
+    e('aside',{className:'sidebar'+(open?' open':'')},
+      e('div',{className:'sb-brand'}, e('h1',null,'CROT'), e('p',null,'Fisioterapia & Pilates')),
+      e('nav',{className:'sb-nav'},
+        items.map(i => e('button',{key:i.id,className:page===i.id?'active':'',onClick:()=>{setPage(i.id);setOpen(false)}}, i.label))
+      ),
+      e('div',{className:'sb-footer'}, 'Painel Administrativo')
+    )
+  );
+}
+
+// === APP ===
+function App() {
+  const [page, setPage] = useState('dashboard');
+  const [mobOpen, setMobOpen] = useState(false);
+  const pages = { dashboard: Dashboard, agenda: Agenda, pacientes: Pacientes, conversas: Conversas, config: Configuracoes };
+  const Page = pages[page] || Dashboard;
+  return e('div',{className:'app'},
+    e('button',{className:'mob-toggle',onClick:()=>setMobOpen(true)},'='),
+    e(Sidebar, { page, setPage, open:mobOpen, setOpen:setMobOpen }),
+    e('main',{className:'main'}, e(Page))
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+</script>
+</body>
 </html>
