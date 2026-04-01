@@ -28,4 +28,3 @@ supabase/.env
 *.njsproj
 *.sln
 *.sw?
-.next
