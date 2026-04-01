@@ -12,7 +12,6 @@ import Conversas from "@/pages/Conversas";
 import Configuracoes from "@/pages/Configuracoes";
 import Automacoes from "@/pages/Automacoes";
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 

@@ -1,3 +1,18 @@
+export interface EvolutionWebhookPayload {
+  event: string;
+  data: {
+    key: {
+      remoteJid: string;
+      fromMe: boolean;
+    };
+    message?: {
+      conversation?: string;
+      extendedTextMessage?: { text: string };
+    };
+    pushName?: string;
+  };
+}
+
 export type ConversationState =
   | "inicio"
   | "menu_principal"
